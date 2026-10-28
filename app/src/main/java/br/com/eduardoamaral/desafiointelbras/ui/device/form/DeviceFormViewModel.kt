@@ -15,7 +15,7 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.ValidationError
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
-import br.com.eduardoamaral.desafiointelbras.ui.common.messageRes
+import br.com.eduardoamaral.desafiointelbras.ui.common.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -145,7 +145,7 @@ class DeviceFormViewModel @Inject constructor(
                     _uiState.update { it.copy(isSaving = false, shouldClose = true) }
                 }
                 is Outcome.Failure -> {
-                    messageBus.send(UserMessage(result.error.messageRes(), isError = true))
+                    messageBus.send(result.error.toUserMessage())
                     _uiState.update {
                         it.copy(isSaving = false, errors = it.errors + conflictFieldError(input, result.error))
                     }

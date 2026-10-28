@@ -10,6 +10,8 @@ import javax.inject.Singleton
 data class UserMessage(
     @param:StringRes val textRes: Int,
     val isError: Boolean = false,
+    /** Valores para os %1$s da string. */
+    val formatArgs: List<Any> = emptyList(),
 )
 
 /**

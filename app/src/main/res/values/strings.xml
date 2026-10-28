@@ -80,6 +80,7 @@
     <string name="error_not_found">Dispositivo não encontrado no servidor.</string>
     <string name="error_conflict">Número de série ou MAC já cadastrado em outro dispositivo.</string>
     <string name="error_invalid_data">O servidor recusou os dados. Revise os campos.</string>
+    <string name="error_invalid_data_detail">O servidor recusou os dados: %1$s</string>
     <string name="error_server">Erro no servidor. Tente novamente mais tarde.</string>
     <string name="error_unknown">Algo deu errado. Tente novamente.</string>
 </resources>

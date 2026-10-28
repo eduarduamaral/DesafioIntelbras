@@ -23,8 +23,8 @@ sealed interface AppError {
     data object NotFound : AppError
     /** 409: serial (vídeo) ou MAC (alarme) já cadastrado em outro dispositivo. */
     data object Conflict : AppError
-    /** 400/422: o servidor recusou os dados enviados. */
-    data object InvalidData : AppError
+    /** 400/422: o servidor recusou os dados enviados. [serverMessage] traz o motivo, quando o servidor informa. */
+    data class InvalidData(val serverMessage: String? = null) : AppError
     data class Server(val code: Int) : AppError
     data object Unknown : AppError
 }

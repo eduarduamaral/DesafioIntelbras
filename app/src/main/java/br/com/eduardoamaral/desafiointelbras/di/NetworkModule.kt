@@ -1,5 +1,6 @@
 package br.com.eduardoamaral.desafiointelbras.di
 
+import android.util.Log
 import br.com.eduardoamaral.desafiointelbras.BuildConfig
 import br.com.eduardoamaral.desafiointelbras.data.remote.AuthInterceptor
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
@@ -20,6 +21,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    private const val HTTP_LOG_TAG = "DesafioHttp"
+
     @Provides
     @Singleton
     fun provideJson(): Json = Json {
@@ -38,9 +41,10 @@ object NetworkModule {
         .apply {
             if (BuildConfig.DEBUG) {
                 addInterceptor(
-                    HttpLoggingInterceptor().apply {
+                    // Tag fixa para filtrar no Logcat: tag:DesafioHttp
+                    HttpLoggingInterceptor { message -> Log.d(HTTP_LOG_TAG, message) }.apply {
                         level = HttpLoggingInterceptor.Level.BODY
-                        redactHeader("Authorization") // o token nunca aparece no Logcat
+                        redactHeader("Authorization")
                     },
                 )
             }

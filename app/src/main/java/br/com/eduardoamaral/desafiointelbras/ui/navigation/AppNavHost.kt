@@ -37,7 +37,7 @@ fun AppNavHost(messageBus: UserMessageBus) {
         messageBus.messages.collect { message ->
             snackbarHostState.showSnackbar(
                 AppSnackbarVisuals(
-                    message = context.getString(message.textRes),
+                    message = context.getString(message.textRes, *message.formatArgs.toTypedArray()),
                     isError = message.isError,
                 ),
             )

@@ -10,7 +10,7 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
-import br.com.eduardoamaral.desafiointelbras.ui.common.messageRes
+import br.com.eduardoamaral.desafiointelbras.ui.common.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -81,7 +81,7 @@ class DashboardViewModel @Inject constructor(
                 is Outcome.Success -> refreshError.value = null
                 is Outcome.Failure -> {
                     refreshError.value = result.error
-                    messageBus.send(UserMessage(result.error.messageRes(), isError = true))
+                    messageBus.send(result.error.toUserMessage())
                 }
             }
             isRefreshing.value = false
@@ -97,7 +97,7 @@ class DashboardViewModel @Inject constructor(
             when (val result = repository.delete(id)) {
                 is Outcome.Success -> messageBus.send(UserMessage(R.string.msg_device_removed))
                 is Outcome.Failure ->
-                    messageBus.send(UserMessage(result.error.messageRes(), isError = true))
+                    messageBus.send(result.error.toUserMessage())
             }
         }
     }

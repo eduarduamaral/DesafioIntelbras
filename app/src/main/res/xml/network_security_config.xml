@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Cleartext liberado somente para o servidor do desafio; todo o resto continua exigindo HTTPS. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">squadapps.ddns-intelbras.com.br</domain>
+    </domain-config>
+</network-security-config>

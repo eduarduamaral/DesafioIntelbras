@@ -11,6 +11,9 @@ enum class ValidationError { REQUIRED, TOO_LONG, INVALID_MAC, INVALID_ALARM_PASS
 object DeviceValidator {
     const val NAME_MAX_LENGTH = 50
 
+    /** Limite do servidor para o número de série (ex.: "ABCDEF1234567"). */
+    const val SERIAL_MAX_LENGTH = 13
+
     private val MAC_REGEX = Regex("^[0-9A-F]{12}$")
     private val ALARM_PASSWORD_REGEX = Regex("^(\\d{4}|\\d{6})$")
 
@@ -21,7 +24,7 @@ object DeviceValidator {
         validateName(input.name)?.let { put(DeviceField.NAME, it) }
         when (input) {
             is DeviceInput.Video -> {
-                if (input.serial.isBlank()) put(DeviceField.SERIAL, ValidationError.REQUIRED)
+                validateSerial(input.serial)?.let { put(DeviceField.SERIAL, it) }
                 if (input.username.isBlank()) put(DeviceField.USERNAME, ValidationError.REQUIRED)
                 if (input.password.isBlank()) put(DeviceField.PASSWORD, ValidationError.REQUIRED)
             }
@@ -35,6 +38,12 @@ object DeviceValidator {
     fun validateName(name: String): ValidationError? = when {
         name.isBlank() -> ValidationError.REQUIRED
         name.trim().length > NAME_MAX_LENGTH -> ValidationError.TOO_LONG
+        else -> null
+    }
+
+    fun validateSerial(serial: String): ValidationError? = when {
+        serial.isBlank() -> ValidationError.REQUIRED
+        serial.trim().length > SERIAL_MAX_LENGTH -> ValidationError.TOO_LONG
         else -> null
     }
 

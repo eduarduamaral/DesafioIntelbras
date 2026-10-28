@@ -59,6 +59,13 @@ class DeviceValidatorTest {
     }
 
     @Test
+    fun `serial aceita ate 13 caracteres`() {
+        assertNull(DeviceValidator.validateSerial("ABCDEF1234567"))
+        assertEquals(ValidationError.TOO_LONG, DeviceValidator.validateSerial("ABCDEF12345678"))
+        assertEquals(ValidationError.REQUIRED, DeviceValidator.validateSerial("  "))
+    }
+
+    @Test
     fun `nome acima do limite`() {
         val name = "a".repeat(DeviceValidator.NAME_MAX_LENGTH + 1)
         assertEquals(ValidationError.TOO_LONG, DeviceValidator.validateName(name))

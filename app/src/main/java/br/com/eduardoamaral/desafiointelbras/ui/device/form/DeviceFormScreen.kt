@@ -212,6 +212,11 @@ private fun VideoFields(state: DeviceFormUiState, actions: DeviceFormActions) {
         onValueChange = actions.onSerialChange,
         label = stringResource(R.string.form_serial_label),
         error = state.errorText(DeviceField.SERIAL),
+        supportingText = stringResource(
+            R.string.form_char_counter,
+            state.serial.length,
+            DeviceValidator.SERIAL_MAX_LENGTH,
+        ),
         enabled = !state.isSaving,
         capitalization = KeyboardCapitalization.Characters,
     )
@@ -238,7 +243,11 @@ private fun AlarmFields(state: DeviceFormUiState, actions: DeviceFormActions) {
         onValueChange = actions.onMacAddressChange,
         label = stringResource(R.string.form_mac_label),
         error = state.errorText(DeviceField.MAC_ADDRESS),
-        supportingText = stringResource(R.string.form_mac_hint),
+        supportingText = stringResource(
+            R.string.form_mac_hint_counter,
+            state.macAddress.length,
+            DeviceFormViewModel.MAC_LENGTH,
+        ),
         enabled = !state.isSaving,
         capitalization = KeyboardCapitalization.Characters,
     )
@@ -257,7 +266,8 @@ private fun AlarmFields(state: DeviceFormUiState, actions: DeviceFormActions) {
 private fun DeviceFormUiState.errorText(field: DeviceField): String? {
     val error = errors[field] ?: return null
     return if (error == ValidationError.TOO_LONG) {
-        stringResource(error.messageRes(), DeviceValidator.NAME_MAX_LENGTH)
+        val max = if (field == DeviceField.SERIAL) DeviceValidator.SERIAL_MAX_LENGTH else DeviceValidator.NAME_MAX_LENGTH
+        stringResource(error.messageRes(), max)
     } else {
         stringResource(error.messageRes())
     }

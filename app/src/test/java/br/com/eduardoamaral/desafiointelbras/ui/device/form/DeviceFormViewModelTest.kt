@@ -87,6 +87,16 @@ class DeviceFormViewModelTest {
     }
 
     @Test
+    fun `serial e cortado em 13 caracteres enquanto o usuario digita`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onTypeChange(DeviceType.VIDEO)
+
+        viewModel.onSerialChange("12345ksjdas98pllji")
+
+        assertEquals("12345ksjdas98", viewModel.uiState.value.serial)
+    }
+
+    @Test
     fun `adicionar alarme valido cria e fecha a tela`() = runTest {
         val viewModel = createViewModel()
         viewModel.onTypeChange(DeviceType.ALARM)

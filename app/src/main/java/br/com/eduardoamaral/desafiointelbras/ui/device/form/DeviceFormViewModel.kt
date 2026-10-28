@@ -101,7 +101,10 @@ class DeviceFormViewModel @Inject constructor(
     }
 
     fun onNameChange(value: String) = updateField(DeviceField.NAME) { copy(name = value) }
-    fun onSerialChange(value: String) = updateField(DeviceField.SERIAL) { copy(serial = value) }
+    // O campo não deixa passar do limite do servidor: o usuário vê o contador parar em 13.
+    fun onSerialChange(value: String) = updateField(DeviceField.SERIAL) {
+        copy(serial = value.take(DeviceValidator.SERIAL_MAX_LENGTH))
+    }
     fun onUsernameChange(value: String) = updateField(DeviceField.USERNAME) { copy(username = value) }
     fun onPasswordChange(value: String) = updateField(DeviceField.PASSWORD) { copy(password = value) }
 

@@ -1,0 +1,21 @@
+package br.com.eduardoamaral.desafiointelbras.di
+
+import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
+import br.com.eduardoamaral.desafiointelbras.data.local.RoomDeviceLocalDataSource
+import br.com.eduardoamaral.desafiointelbras.data.repository.OfflineFirstDeviceRepository
+import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DataModule {
+
+    @Binds
+    abstract fun bindDeviceRepository(impl: OfflineFirstDeviceRepository): DeviceRepository
+
+    @Binds
+    abstract fun bindDeviceLocalDataSource(impl: RoomDeviceLocalDataSource): DeviceLocalDataSource
+}

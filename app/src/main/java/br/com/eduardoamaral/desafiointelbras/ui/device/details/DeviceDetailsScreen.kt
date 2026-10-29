@@ -1,36 +1,46 @@
 package br.com.eduardoamaral.desafiointelbras.ui.device.details
 
+import android.content.ClipData
+import android.os.Build
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.SearchOff
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,18 +50,26 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
 import br.com.eduardoamaral.desafiointelbras.ui.components.DeviceTypeIcon
 import br.com.eduardoamaral.desafiointelbras.ui.components.LoadingView
 import br.com.eduardoamaral.desafiointelbras.ui.components.MessageView
+import br.com.eduardoamaral.desafiointelbras.ui.components.formatMac
+import br.com.eduardoamaral.desafiointelbras.ui.components.kindRes
 import br.com.eduardoamaral.desafiointelbras.ui.components.labelRes
+import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceDetailsRoute(
     onBack: () -> Unit,
-    onEdit: (String) -> Unit,
     viewModel: DeviceDetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    DeviceDetailsScreen(state = state, onBack = onBack)
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeviceDetailsScreen(state: DeviceDetailsUiState, onBack: () -> Unit) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.details_title)) },
@@ -63,19 +81,12 @@ fun DeviceDetailsRoute(
                         )
                     }
                 },
-                actions = {
-                    val current = state
-                    if (current is DeviceDetailsUiState.Success) {
-                        IconButton(onClick = { onEdit(current.device.id) }) {
-                            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
-                        }
-                    }
-                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { padding ->
         val modifier = Modifier.padding(padding)
-        when (val current = state) {
+        when (state) {
             DeviceDetailsUiState.Loading -> LoadingView(modifier)
             DeviceDetailsUiState.NotFound -> MessageView(
                 icon = Icons.Outlined.SearchOff,
@@ -83,70 +94,119 @@ fun DeviceDetailsRoute(
                 message = null,
                 modifier = modifier,
             )
-            is DeviceDetailsUiState.Success -> DeviceDetailsContent(current.device, modifier)
+            is DeviceDetailsUiState.Success -> DeviceDetailsContent(state.device, modifier)
         }
     }
 }
 
+/**
+ * Dois cards, como no wireframe: cabeçalho (ícone + nome) e dados em linhas rótulo/valor.
+ * A senha não é exibida aqui (o wireframe não mostra e ela continua acessível na edição).
+ */
 @Composable
 private fun DeviceDetailsContent(device: Device, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DeviceTypeIcon(device.type)
-            Spacer(Modifier.width(16.dp))
-            Text(device.name, style = MaterialTheme.typography.headlineSmall)
-        }
-        HorizontalDivider()
-        InfoRow(stringResource(R.string.details_type), stringResource(device.type.labelRes()))
-        when (val details = device.details) {
-            is DeviceDetails.Video -> {
-                InfoRow(stringResource(R.string.form_serial_label), details.serial)
-                InfoRow(stringResource(R.string.form_username_label), details.username)
+        InfoCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DeviceTypeIcon(device.type)
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(device.name, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(device.type.kindRes()), style = MaterialTheme.typography.bodySmall)
+                }
             }
-            is DeviceDetails.Alarm ->
-                InfoRow(stringResource(R.string.form_mac_label), details.macAddress.formatMac())
         }
-        PasswordInfoRow(device.details.password)
-        InfoRow(
-            stringResource(R.string.details_favorite),
-            stringResource(if (device.isFavorite) R.string.yes else R.string.no),
-        )
-        InfoRow(stringResource(R.string.details_id), device.id)
+        InfoCard {
+            InfoRow(stringResource(R.string.details_type), stringResource(device.type.labelRes()))
+            when (val details = device.details) {
+                is DeviceDetails.Video -> {
+                    InfoRow(stringResource(R.string.form_serial_label), details.serial, copyable = true)
+                    InfoRow(stringResource(R.string.form_username_label), details.username)
+                }
+                is DeviceDetails.Alarm ->
+                    InfoRow(stringResource(R.string.form_mac_label), details.macAddress.formatMac(), copyable = true)
+            }
+        }
     }
 }
 
-/** "1A2B3C4D5E6F" -> "1A:2B:3C:4D:5E:6F" só para exibição. */
-private fun String.formatMac(): String = chunked(2).joinToString(":")
-
 @Composable
-private fun InfoRow(label: String, value: String) {
-    ListItem(
-        overlineContent = { Text(label) },
-        headlineContent = { Text(value) },
-    )
+private fun InfoCard(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium)
+            // Mesma borda do card da lista: 1dp #F1F1F1.
+            .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.medium)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) { content() }
 }
 
-/** Senha oculta por padrão; o usuário revela se precisar. */
 @Composable
-private fun PasswordInfoRow(password: String) {
-    var visible by rememberSaveable { mutableStateOf(false) }
-    ListItem(
-        overlineContent = { Text(stringResource(R.string.form_password_label)) },
-        headlineContent = { Text(if (visible) password else "•".repeat(password.length)) },
-        trailingContent = {
-            IconButton(onClick = { visible = !visible }) {
-                Icon(
-                    imageVector = if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                    contentDescription = stringResource(if (visible) R.string.password_hide else R.string.password_show),
-                )
+private fun InfoRow(label: String, value: String, copyable: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 28.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 16.dp),
+        )
+        if (copyable) CopyButton(label = label, value = value)
+    }
+}
+
+@Composable
+private fun CopyButton(label: String, value: String) {
+    val clipboard = LocalClipboard.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val copiedMessage = stringResource(R.string.copied)
+    IconButton(
+        onClick = {
+            scope.launch {
+                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, value)))
+                // A partir do Android 13 o próprio sistema mostra a confirmação de cópia.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                }
             }
         },
-    )
+        modifier = Modifier.size(32.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ContentCopy,
+            contentDescription = stringResource(R.string.copy_value, label),
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun DeviceDetailsPreview() {
+    DesafioIntelbrasTheme {
+        DeviceDetailsScreen(
+            state = DeviceDetailsUiState.Success(
+                Device("1", "Câmera 1", DeviceDetails.Video("ABCDE12345678", "admin", "1234")),
+            ),
+            onBack = {},
+        )
+    }
 }

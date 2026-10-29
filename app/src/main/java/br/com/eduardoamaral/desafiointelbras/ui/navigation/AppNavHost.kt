@@ -60,10 +60,7 @@ fun AppNavHost(messageBus: UserMessageBus) {
             )
         }
         composable<DeviceDetailsDestination> {
-            DeviceDetailsRoute(
-                onBack = { navController.popBackStack() },
-                onEdit = { id -> navController.navigate(DeviceFormDestination(id)) },
-            )
+            DeviceDetailsRoute(onBack = { navController.popBackStack() })
         }
     }
 }

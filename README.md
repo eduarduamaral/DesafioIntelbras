@@ -105,11 +105,11 @@ O repositório usa um `Mutex` nas operações que escrevem no banco a partir da 
 - **Senhas dos dispositivos ficam no Room em texto puro**, porque a API as devolve assim e a tela de informações as mostra. Na UI aparecem ocultas com botão para revelar. Melhoria: criptografar o banco (SQLCipher) ou guardar só no Keystore.
 - **Exclusão com 404 conta como sucesso**: o estado desejado (item não existe) foi alcançado.
 - **Cleartext HTTP** liberado só para o host da API (`network_security_config.xml`).
+- **Foco verde no campo de busca (desvio do guia)**: no Figma a busca focada só ganha borda cinza, o que deixa o foco quase invisível (pouco contraste, ruim para acessibilidade). Usei o mesmo verde (`#00B26B`) dos campos do formulário para o feedback ser claro e consistente no app inteiro. A lupa também fica verde no foco, seguindo a regra de "ícone ativo" da Iconografia do guia.
 - **Módulo único por enquanto**: a separação é por pacote, pensada para virar módulos (`:core:data`, `:feature:dashboard`...) sem refatorar.
 
 ## Pendências e melhorias
 
-- [ ] Aplicar cores, tipografia e ícones do protótipo/guia de estilo
 - [ ] Fila de operações offline (criar/editar/remover sem rede e sincronizar depois), por exemplo com WorkManager e uma tabela `pending_operations`
 - [ ] Testes de UI com Compose UI Test
 - [ ] ktlint/detekt no CI

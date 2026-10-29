@@ -1,75 +1,80 @@
 <resources>
     <string name="app_name">Desafio Intelbras</string>
 
+    <!-- Comuns -->
+    <string name="navigate_back">Voltar</string>
+    <string name="close">Fechar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="retry">Tentar novamente</string>
+
     <!-- Dashboard -->
-    <string name="dashboard_title">Dispositivos</string>
-    <string name="search_placeholder">Buscar pelo nome</string>
+    <string name="dashboard_title">Meus dispositivos</string>
+    <plurals name="devices_count">
+        <item quantity="one">%d dispositivo</item>
+        <item quantity="other">%d dispositivos</item>
+    </plurals>
+    <string name="search_placeholder">Pesquisar</string>
     <string name="search_clear">Limpar busca</string>
     <string name="filter_all">Todos</string>
     <string name="filter_favorites">Favoritos</string>
     <string name="filter_cameras">Câmeras</string>
     <string name="filter_alarms">Alarmes</string>
-    <string name="add_device">Adicionar dispositivo</string>
+    <string name="add_device">Adicionar</string>
     <string name="device_options">Opções de %1$s</string>
     <string name="device_type_video">Dispositivo de vídeo</string>
     <string name="device_type_alarm">Dispositivo de alarme</string>
-    <string name="favorite_badge">Favorito</string>
+    <string name="device_kind_camera">Câmera</string>
+    <string name="device_kind_alarm">Alarme</string>
 
-    <!-- Bottom sheet -->
-    <string name="action_edit">Editar dispositivo</string>
+    <!-- Menu de ações -->
     <string name="action_info">Informações</string>
+    <string name="action_edit">Editar dispositivo</string>
     <string name="action_favorite">Marcar favorito</string>
     <string name="action_unfavorite">Desmarcar favorito</string>
     <string name="action_remove">Remover dispositivo</string>
 
     <!-- Remoção -->
     <string name="remove_dialog_title">Remover dispositivo?</string>
-    <string name="remove_dialog_message">\"%1$s\" será removido do servidor.</string>
-    <string name="remove_confirm">Remover</string>
-    <string name="cancel">Cancelar</string>
+    <string name="remove_dialog_message">Você tem certeza que deseja remover este dispositivo?</string>
+    <string name="remove_confirm">Confirmar</string>
 
     <!-- Estados -->
     <string name="empty_title">Nenhum dispositivo cadastrado</string>
-    <string name="empty_message">Toque em + para adicionar o primeiro.</string>
+    <string name="empty_message">Toque em Adicionar para cadastrar o primeiro.</string>
     <string name="empty_filtered_title">Nada encontrado</string>
     <string name="empty_filtered_message">Tente outro nome ou filtro.</string>
     <string name="error_title">Não foi possível carregar</string>
-    <string name="retry">Tentar novamente</string>
 
     <!-- Formulário -->
-    <string name="form_title_add">Adicionar dispositivo</string>
+    <string name="form_title_add">Novo dispositivo</string>
     <string name="form_title_edit">Editar dispositivo</string>
-    <string name="form_name_label">Nome</string>
-    <string name="form_type_label">Tipo</string>
-    <string name="form_type_video">Câmera</string>
-    <string name="form_type_alarm">Alarme</string>
     <string name="form_save">Salvar</string>
+    <string name="form_type_label">Tipo de dispositivo</string>
+    <string name="form_type_video">Vídeo</string>
+    <string name="form_type_alarm">Alarme</string>
+    <string name="form_name_label">Nome</string>
+    <string name="form_serial_label">Número de série</string>
+    <string name="form_username_label">Usuário</string>
+    <string name="form_password_label">Senha</string>
+    <string name="form_mac_label">MAC Address</string>
+    <string name="form_mac_hint_counter">Ex.: 1A:2B:3C:4D:5E:6F · %1$d/%2$d</string>
+    <string name="form_serial_number_hint_counter">Ex.: 1A2B3C4D5E6F9 · %1$d/%2$d</string>
+    <string name="form_char_counter">%1$d/%2$d</string>
+    <string name="form_alarm_password_hint">4 ou 6 dígitos numéricos</string>
     <string name="form_error_required">Campo obrigatório</string>
     <string name="form_error_too_long">Máximo de %1$d caracteres</string>
     <string name="form_error_invalid_mac">MAC inválido: use 12 caracteres hexadecimais</string>
     <string name="form_error_invalid_alarm_password">A senha deve ter 4 ou 6 dígitos</string>
     <string name="form_error_already_exists">Já cadastrado em outro dispositivo</string>
-    <string name="form_serial_label">Número de série</string>
-    <string name="form_username_label">Usuário</string>
-    <string name="form_password_label">Senha</string>
-    <string name="form_mac_label">Endereço MAC</string>
-    <string name="form_mac_hint_counter">Ex.: 1A2B3C4D5E6F · %1$d/%2$d</string>
-    <string name="form_char_counter">%1$d/%2$d</string>
-    <string name="form_alarm_password_hint">4 ou 6 dígitos numéricos</string>
-    <string name="form_type_locked">O tipo não pode ser alterado depois de criado</string>
     <string name="password_show">Mostrar senha</string>
     <string name="password_hide">Ocultar senha</string>
-    <string name="navigate_back">Voltar</string>
 
-    <!-- Detalhes -->
+    <!-- Informações -->
     <string name="details_title">Informações</string>
-    <string name="details_name">Nome</string>
     <string name="details_type">Tipo</string>
-    <string name="details_id">Identificador</string>
-    <string name="details_favorite">Favorito</string>
-    <string name="yes">Sim</string>
-    <string name="no">Não</string>
     <string name="details_not_found">Dispositivo não encontrado</string>
+    <string name="copy_value">Copiar %1$s</string>
+    <string name="copied">Copiado</string>
 
     <!-- Snackbars -->
     <string name="msg_device_created">Dispositivo adicionado</string>

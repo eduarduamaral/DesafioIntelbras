@@ -35,7 +35,7 @@ fun AppTextField(
     modifier: Modifier = Modifier,
     error: String? = null,
     supportingText: String? = null,
-    required: Boolean = true,
+    required: Boolean = false,
     enabled: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Text,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.None,

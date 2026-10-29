@@ -3,24 +3,30 @@ package br.com.eduardoamaral.desafiointelbras.ui.dashboard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.SearchOff
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,23 +34,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
-import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
+import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.ui.common.messageRes
 import br.com.eduardoamaral.desafiointelbras.ui.components.AppSnackbarHost
+import br.com.eduardoamaral.desafiointelbras.ui.components.ConfirmDestructiveDialog
 import br.com.eduardoamaral.desafiointelbras.ui.components.LoadingView
 import br.com.eduardoamaral.desafiointelbras.ui.components.MessageView
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceActionsBottomSheet
-import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceCard
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceFilterChips
+import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceRow
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceSearchField
+import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.itemPosition
 import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
 
 /** Versão "com estado": liga o ViewModel à tela. */
@@ -93,26 +104,22 @@ fun DashboardScreen(
     val deleteDevice = state.devices.firstOrNull { it.id == deleteDeviceId }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.dashboard_title)) }) },
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { AppSnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddDevice) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_device))
-            }
-        },
+        bottomBar = { AddDeviceButton(onClick = onAddDevice) },
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                DeviceSearchField(query = state.query, onQueryChange = onQueryChange)
-                DeviceFilterChips(selected = state.filter, onSelected = onFilterSelected)
-            }
+            DashboardHeader(
+                totalCount = state.totalCount,
+                query = state.query,
+                filter = state.filter,
+                onQueryChange = onQueryChange,
+                onFilterSelected = onFilterSelected,
+            )
 
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing && state.devices.isNotEmpty(),
@@ -155,13 +162,13 @@ fun DashboardScreen(
         DeviceActionsBottomSheet(
             device = sheetDevice,
             onDismiss = { sheetDeviceId = null },
-            onEdit = {
-                sheetDeviceId = null
-                onEditDevice(sheetDevice.id)
-            },
             onInfo = {
                 sheetDeviceId = null
                 onOpenDetails(sheetDevice.id)
+            },
+            onEdit = {
+                sheetDeviceId = null
+                onEditDevice(sheetDevice.id)
             },
             onToggleFavorite = {
                 sheetDeviceId = null
@@ -175,20 +182,46 @@ fun DashboardScreen(
     }
 
     if (deleteDevice != null) {
-        AlertDialog(
-            onDismissRequest = { deleteDeviceId = null },
-            title = { Text(stringResource(R.string.remove_dialog_title)) },
-            text = { Text(stringResource(R.string.remove_dialog_message, deleteDevice.name)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteDeviceId = null
-                    onDeleteDevice(deleteDevice.id)
-                }) { Text(stringResource(R.string.remove_confirm)) }
+        ConfirmDestructiveDialog(
+            title = stringResource(R.string.remove_dialog_title),
+            message = stringResource(R.string.remove_dialog_message),
+            confirmLabel = stringResource(R.string.remove_confirm),
+            dismissLabel = stringResource(R.string.cancel),
+            onConfirm = {
+                deleteDeviceId = null
+                onDeleteDevice(deleteDevice.id)
             },
-            dismissButton = {
-                TextButton(onClick = { deleteDeviceId = null }) { Text(stringResource(R.string.cancel)) }
-            },
+            onDismiss = { deleteDeviceId = null },
         )
+    }
+}
+
+@Composable
+private fun DashboardHeader(
+    totalCount: Int,
+    query: String,
+    filter: DeviceFilter,
+    onQueryChange: (String) -> Unit,
+    onFilterSelected: (DeviceFilter) -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column {
+            Text(
+                text = stringResource(R.string.dashboard_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.semantics { heading() },
+            )
+            // Total cadastrado, independente do filtro (como no wireframe de Favoritos).
+            Text(
+                text = pluralStringResource(R.plurals.devices_count, totalCount, totalCount),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        DeviceSearchField(query = query, onQueryChange = onQueryChange)
+        DeviceFilterChips(selected = filter, onSelected = onFilterSelected)
     }
 }
 
@@ -200,13 +233,13 @@ private fun DeviceList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
     ) {
-        // key estável: o Compose reaproveita os itens e anima reordenações.
-        items(items = devices, key = { it.id }) { device ->
-            DeviceCard(
+        // key estável: o Compose reaproveita os itens e anima inserções e remoções.
+        itemsIndexed(items = devices, key = { _, device -> device.id }) { index, device ->
+            DeviceRow(
                 device = device,
+                position = itemPosition(index, devices.size),
                 onClick = { onOpenDetails(device.id) },
                 onMoreClick = { onMoreClick(device.id) },
                 modifier = Modifier.animateItem(),
@@ -215,21 +248,40 @@ private fun DeviceList(
     }
 }
 
-@Preview(showBackground = true)
+/** "+ Adicionar" fixo no rodapé, em pílula cinza (wireframe), no lugar de um FAB. */
+@Composable
+private fun AddDeviceButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .height(48.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.add_device), style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 private fun DashboardScreenPreview() {
     DesafioIntelbrasTheme {
         DashboardScreen(
             state = DashboardUiState(
                 devices = listOf(
-                    Device(
-                        id = "1",
-                        name = "Câmera da garagem",
-                        details = DeviceDetails.Video("ABCDEF1234567", "admin", "1234"),
-                        isFavorite = true,
-                    ),
-                    Device("2", "Central do escritório", DeviceDetails.Alarm("1A2B3C4D5E6F", "1234")),
+                    Device("1", "Central de alarme", DeviceDetails.Alarm("A0B1C2D3E4F5", "1234")),
+                    Device("2", "Câmera 1", DeviceDetails.Video("ABCDE12345678", "admin", "1234"), isFavorite = true),
+                    Device("3", "Câmera 2", DeviceDetails.Video("ABCDE12345679", "admin", "1234")),
                 ),
+                totalCount = 3,
                 isLoadingLocal = false,
             ),
             snackbarHostState = SnackbarHostState(),

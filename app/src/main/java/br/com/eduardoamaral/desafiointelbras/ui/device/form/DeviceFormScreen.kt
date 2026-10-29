@@ -1,36 +1,48 @@
 package br.com.eduardoamaral.desafiointelbras.ui.device.form
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +56,8 @@ import br.com.eduardoamaral.desafiointelbras.ui.components.AppSnackbarHost
 import br.com.eduardoamaral.desafiointelbras.ui.components.AppTextField
 import br.com.eduardoamaral.desafiointelbras.ui.components.LoadingView
 import br.com.eduardoamaral.desafiointelbras.ui.components.PasswordTextField
+import br.com.eduardoamaral.desafiointelbras.ui.components.labelRes
+import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
 
 @Composable
 fun DeviceFormRoute(
@@ -93,6 +107,7 @@ fun DeviceFormScreen(
     actions: DeviceFormActions,
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -100,12 +115,22 @@ fun DeviceFormScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = actions.onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.navigate_back),
-                        )
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close))
                     }
                 },
+                // "Salvar" como ação de texto no topo, como no wireframe.
+                actions = {
+                    if (state.isSaving) {
+                        Box(Modifier.padding(horizontal = 20.dp)) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                    } else {
+                        TextButton(onClick = actions.onSave, enabled = !state.isLoading) {
+                            Text(stringResource(R.string.form_save), style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         snackbarHost = { AppSnackbarHost(snackbarHostState) },
@@ -120,10 +145,13 @@ fun DeviceFormScreen(
                 .fillMaxSize()
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DeviceTypeSelector(state = state, onTypeChange = actions.onTypeChange)
+            // Na edição o tipo não aparece: vídeo e alarme são recursos diferentes na API.
+            if (!state.isEditing) {
+                DeviceTypeSelector(state = state, onTypeChange = actions.onTypeChange)
+            }
 
             AppTextField(
                 value = state.name,
@@ -144,64 +172,65 @@ fun DeviceFormScreen(
                     }
                 }
             }
-
-            Button(
-                onClick = actions.onSave,
-                enabled = !state.isSaving,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-            ) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(stringResource(R.string.form_save))
-                }
-            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Seletor "Alarme | Vídeo" do wireframe: trilho cinza com a opção escolhida em branco
+ * e texto verde. Implementado com selectable + Role.RadioButton para o TalkBack anunciar
+ * "selecionado, 1 de 2".
+ */
 @Composable
 private fun DeviceTypeSelector(state: DeviceFormUiState, onTypeChange: (DeviceType) -> Unit) {
     val typeError = state.errorText(DeviceField.TYPE)
+    val colors = MaterialTheme.colorScheme
     Text(
-        text = stringResource(R.string.form_type_label) + " *",
-        style = MaterialTheme.typography.labelLarge,
-        color = if (typeError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        text = stringResource(R.string.form_type_label),
+        style = MaterialTheme.typography.titleSmall,
+        color = if (typeError != null) colors.error else colors.onSurface,
+        modifier = Modifier.padding(top = 8.dp),
     )
-    val types = DeviceType.entries
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        types.forEachIndexed { index, type ->
-            SegmentedButton(
-                selected = state.type == type,
-                onClick = { onTypeChange(type) },
-                shape = SegmentedButtonDefaults.itemShape(index, types.size),
-                enabled = state.canChangeType,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(colors.surfaceContainerHigh)
+            .padding(4.dp)
+            .selectableGroup(),
+    ) {
+        // Ordem do wireframe: Alarme primeiro.
+        listOf(DeviceType.ALARM, DeviceType.VIDEO).forEach { type ->
+            val selected = state.type == type
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(MaterialTheme.shapes.small)
+                    .background(if (selected) colors.background else colors.surfaceContainerHigh)
+                    .selectable(
+                        selected = selected,
+                        // Sem ripple: a troca de fundo da opção já é o feedback visual (como no Figma).
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = state.canChangeType,
+                        role = Role.RadioButton,
+                        onClick = { onTypeChange(type) },
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    stringResource(
-                        when (type) {
-                            DeviceType.VIDEO -> R.string.form_type_video
-                            DeviceType.ALARM -> R.string.form_type_alarm
-                        },
-                    ),
+                    text = stringResource(type.labelRes()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (selected) colors.primary else colors.onSurface,
                 )
             }
         }
     }
-    when {
-        typeError != null -> Text(
-            text = typeError,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-        state.isEditing -> Text(
-            text = stringResource(R.string.form_type_locked),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    if (typeError != null) {
+        Text(text = typeError, style = MaterialTheme.typography.bodySmall, color = colors.error)
     }
 }
 
@@ -213,7 +242,7 @@ private fun VideoFields(state: DeviceFormUiState, actions: DeviceFormActions) {
         label = stringResource(R.string.form_serial_label),
         error = state.errorText(DeviceField.SERIAL),
         supportingText = stringResource(
-            R.string.form_char_counter,
+            R.string.form_serial_number_hint_counter,
             state.serial.length,
             DeviceValidator.SERIAL_MAX_LENGTH,
         ),
@@ -232,6 +261,7 @@ private fun VideoFields(state: DeviceFormUiState, actions: DeviceFormActions) {
         onValueChange = actions.onPasswordChange,
         label = stringResource(R.string.form_password_label),
         error = state.errorText(DeviceField.PASSWORD),
+        supportingText = stringResource(R.string.form_alarm_password_hint),
         enabled = !state.isSaving,
     )
 }
@@ -270,5 +300,17 @@ private fun DeviceFormUiState.errorText(field: DeviceField): String? {
         stringResource(error.messageRes(), max)
     } else {
         stringResource(error.messageRes())
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+@Composable
+private fun DeviceFormScreenPreview() {
+    DesafioIntelbrasTheme {
+        DeviceFormScreen(
+            state = DeviceFormUiState(type = DeviceType.VIDEO),
+            snackbarHostState = SnackbarHostState(),
+            actions = DeviceFormActions(),
+        )
     }
 }

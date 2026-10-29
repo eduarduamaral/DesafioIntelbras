@@ -9,7 +9,7 @@ import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
-/** Visual com a informação de erro, para pintar o Snackbar de outra cor. */
+/** Erros ficam mais tempo na tela e ganham botão de fechar. */
 data class AppSnackbarVisuals(
     override val message: String,
     val isError: Boolean,
@@ -19,19 +19,13 @@ data class AppSnackbarVisuals(
         if (isError) SnackbarDuration.Long else SnackbarDuration.Short,
 ) : SnackbarVisuals
 
+/**
+ * Snackbar do guia: fundo escuro (#1A1B1D) e texto claro (#F5EFF7). As cores vêm de
+ * inverseSurface/inverseOnSurface no tema, que é o padrão do Material 3 para Snackbar.
+ */
 @Composable
 fun AppSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
     SnackbarHost(hostState = hostState, modifier = modifier) { data ->
-        val isError = (data.visuals as? AppSnackbarVisuals)?.isError == true
-        if (isError) {
-            Snackbar(
-                snackbarData = data,
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                dismissActionContentColor = MaterialTheme.colorScheme.onErrorContainer,
-            )
-        } else {
-            Snackbar(snackbarData = data)
-        }
+        Snackbar(snackbarData = data, shape = MaterialTheme.shapes.extraSmall)
     }
 }

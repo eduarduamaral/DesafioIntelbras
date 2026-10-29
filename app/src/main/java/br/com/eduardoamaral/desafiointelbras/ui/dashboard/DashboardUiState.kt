@@ -8,6 +8,8 @@ data class DashboardUiState(
     val query: String = "",
     val filter: DeviceFilter = DeviceFilter.ALL,
     val devices: List<Device> = emptyList(),
+    /** Total cadastrado, sem filtro nem busca ("3 dispositivos" no cabeçalho). */
+    val totalCount: Int = 0,
     val isLoadingLocal: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: AppError? = null,

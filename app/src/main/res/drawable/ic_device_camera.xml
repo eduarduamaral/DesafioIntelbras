@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exportado do Figma (Style Guide > Iconografia). Desenho de 14x9 centralizado no quadro 18x18 do guia.
+     A cor é aplicada pelo tint do Compose (tema claro/escuro), o fillColor abaixo é só a de referência. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+  <group
+      android:translateX="2"
+      android:translateY="4.5">
+  <path
+        android:pathData="M1,9C0.735,9 0.481,8.895 0.293,8.707C0.105,8.519 0,8.265 0,8V1C0,0.735 0.105,0.481 0.293,0.293C0.481,0.105 0.735,0 1,0H10C10.265,0 10.519,0.105 10.707,0.293C10.895,0.481 11,0.735 11,1V2.459L13.175,0.615C13.247,0.554 13.336,0.515 13.43,0.502C13.524,0.489 13.619,0.504 13.705,0.543C13.792,0.584 13.865,0.65 13.917,0.73C13.968,0.811 13.996,0.904 13.997,1V8C13.997,8.095 13.969,8.188 13.917,8.268C13.865,8.347 13.792,8.41 13.705,8.449C13.64,8.481 13.569,8.497 13.497,8.498C13.378,8.497 13.264,8.454 13.174,8.377L10.999,6.537V8C10.999,8.265 10.894,8.519 10.706,8.707C10.519,8.895 10.264,9 9.999,9H1ZM1,8H10V1H1V8ZM13,6.92V2.078L11,3.777V5.229L13,6.92ZM3,3.498C2.867,3.498 2.74,3.445 2.646,3.352C2.553,3.258 2.5,3.131 2.5,2.998C2.5,2.865 2.553,2.738 2.646,2.645C2.74,2.551 2.867,2.498 3,2.498H6C6.133,2.498 6.26,2.551 6.354,2.645C6.447,2.738 6.5,2.865 6.5,2.998C6.5,3.131 6.447,3.258 6.354,3.352C6.26,3.445 6.133,3.498 6,3.498H3Z"
+        android:fillColor="#253B40"/>
+  </group>
+</vector>

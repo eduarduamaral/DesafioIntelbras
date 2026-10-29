@@ -52,8 +52,8 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
 |---|---|
 | `domain` | Modelos puros (`Device` + `DeviceDetails` por tipo, `DeviceInput`, `Outcome`, `AppError`), regras de validação (`DeviceValidator`) e a interface `DeviceRepository`. Não conhece Android. |
 | `data/local` | Room: entidades, DAO, `DeviceLocalDataSource`. |
-| `data/remote` | Retrofit (`DeviceApi`), DTOs, `AuthInterceptor`, `safeApiCall` (exceção → `AppError`). |
-| `data/repository` | `OfflineFirstDeviceRepository`: lê do Room, escreve via API e reflete no Room. |
+| `data/remote` | `DeviceRemoteDataSource`: esconde os dois recursos da API, os DTOs e a tradução de erros (`safeApiCall`), devolvendo modelos de domínio. Implementada com Retrofit (`DeviceApi`, `AuthInterceptor`). |
+| `data/repository` | `OfflineFirstDeviceRepository`: só orquestra as duas fontes (lê do Room, escreve via fonte remota e reflete no Room, com `Mutex`). Não conhece Retrofit, DTOs nem Room. |
 | `di` | Módulos Hilt. |
 | `ui` | Telas (`dashboard`, `device/form`, `device/details`), componentes reutilizáveis, navegação e tema. |
 

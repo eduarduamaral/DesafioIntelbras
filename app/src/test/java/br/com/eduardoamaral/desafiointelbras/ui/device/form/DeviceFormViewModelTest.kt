@@ -41,13 +41,11 @@ class DeviceFormViewModelTest {
     )
 
     @Test
-    fun `salvar sem escolher o tipo marca erro no tipo`() = runTest {
+    fun `novo dispositivo abre com Video selecionado`() = runTest {
         val viewModel = createViewModel()
 
-        viewModel.onSave()
-
-        assertEquals(ValidationError.REQUIRED, viewModel.uiState.value.errors[DeviceField.TYPE])
-        assertTrue(repository.created.isEmpty())
+        assertEquals(DeviceType.VIDEO, viewModel.uiState.value.type)
+        assertTrue(viewModel.uiState.value.canChangeType)
     }
 
     @Test

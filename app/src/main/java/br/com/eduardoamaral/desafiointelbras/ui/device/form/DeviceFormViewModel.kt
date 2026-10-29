@@ -50,11 +50,14 @@ class DeviceFormViewModel @Inject constructor(
     private val messageBus: UserMessageBus,
 ) : ViewModel() {
 
-    // Lemos a chave crua (mesmo nome da propriedade em DeviceFormDestination) em vez de toRoute(),
-    // para o ViewModel continuar testável sem Robolectric.
     private val deviceId: String? = savedStateHandle[DEVICE_ID_ARG]
 
-    private val _uiState = MutableStateFlow(DeviceFormUiState(isEditing = deviceId != null))
+    private val _uiState = MutableStateFlow(
+        DeviceFormUiState(
+            isEditing = deviceId != null,
+            type = if (deviceId == null) DeviceType.VIDEO else null,
+        ),
+    )
     val uiState: StateFlow<DeviceFormUiState> = _uiState.asStateFlow()
 
     init {

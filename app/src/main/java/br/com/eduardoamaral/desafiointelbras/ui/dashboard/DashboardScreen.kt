@@ -46,6 +46,7 @@ import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
+import br.com.eduardoamaral.desafiointelbras.ui.common.clearFocusOnTap
 import br.com.eduardoamaral.desafiointelbras.ui.common.messageRes
 import br.com.eduardoamaral.desafiointelbras.ui.components.AppSnackbarHost
 import br.com.eduardoamaral.desafiointelbras.ui.components.ConfirmDestructiveDialog
@@ -124,7 +125,10 @@ fun DashboardScreen(
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing && state.devices.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                // Tocar ou rolar a lista tira o foco da busca e fecha o teclado.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clearFocusOnTap(),
             ) {
                 when (val content = state.content) {
                     DashboardContent.Loading -> LoadingView()
@@ -208,7 +212,7 @@ private fun DashboardHeader(
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column {
+        Column(Modifier.clearFocusOnTap()) {
             Text(
                 text = stringResource(R.string.dashboard_title),
                 style = MaterialTheme.typography.headlineSmall,
@@ -221,7 +225,11 @@ private fun DashboardHeader(
             )
         }
         DeviceSearchField(query = query, onQueryChange = onQueryChange)
-        DeviceFilterChips(selected = filter, onSelected = onFilterSelected)
+        DeviceFilterChips(
+            selected = filter,
+            onSelected = onFilterSelected,
+            modifier = Modifier.clearFocusOnTap(),
+        )
     }
 }
 

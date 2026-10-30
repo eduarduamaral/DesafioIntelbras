@@ -13,6 +13,7 @@ import br.com.eduardoamaral.desafiointelbras.testutil.alarmDevice
 import br.com.eduardoamaral.desafiointelbras.testutil.videoDevice
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
+import br.com.eduardoamaral.desafiointelbras.ui.navigation.DEVICE_ID_ARG
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -42,7 +43,7 @@ class DeviceFormViewModelTest {
 
     private fun createViewModel(deviceId: String? = null) = DeviceFormViewModel(
         savedStateHandle = SavedStateHandle(
-            if (deviceId != null) mapOf(DeviceFormViewModel.DEVICE_ID_ARG to deviceId) else emptyMap(),
+            if (deviceId != null) mapOf(DEVICE_ID_ARG to deviceId) else emptyMap(),
         ),
         repository = repository,
         messageBus = messageBus,

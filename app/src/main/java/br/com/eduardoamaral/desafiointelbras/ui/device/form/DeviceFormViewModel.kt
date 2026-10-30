@@ -3,6 +3,7 @@ package br.com.eduardoamaral.desafiointelbras.ui.device.form
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.eduardoamaral.desafiointelbras.ui.navigation.DEVICE_ID_ARG
 import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
@@ -186,9 +187,5 @@ class DeviceFormViewModel @Inject constructor(
         )
         DeviceType.ALARM -> DeviceInput.Alarm(name = name.trim(), macAddress = macAddress, password = password)
         null -> null
-    }
-
-    companion object {
-        const val DEVICE_ID_ARG = "deviceId"
     }
 }

@@ -13,18 +13,6 @@ import br.com.eduardoamaral.desafiointelbras.ui.components.AppSnackbarVisuals
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.DashboardRoute
 import br.com.eduardoamaral.desafiointelbras.ui.device.details.DeviceDetailsRoute
 import br.com.eduardoamaral.desafiointelbras.ui.device.form.DeviceFormRoute
-import kotlinx.serialization.Serializable
-
-// Rotas type-safe (Navigation 2.8+). O nome da propriedade "deviceId" é a chave
-// que os ViewModels leem do SavedStateHandle.
-@Serializable
-data object DashboardDestination
-
-@Serializable
-data class DeviceFormDestination(val deviceId: String? = null)
-
-@Serializable
-data class DeviceDetailsDestination(val deviceId: String)
 
 @Composable
 fun AppNavHost(messageBus: UserMessageBus) {

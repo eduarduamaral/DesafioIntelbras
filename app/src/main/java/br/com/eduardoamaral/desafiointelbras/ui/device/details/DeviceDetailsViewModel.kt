@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
+import br.com.eduardoamaral.desafiointelbras.ui.navigation.DEVICE_ID_ARG
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,8 +32,4 @@ class DeviceDetailsViewModel @Inject constructor(
             if (device == null) DeviceDetailsUiState.NotFound else DeviceDetailsUiState.Success(device)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceDetailsUiState.Loading)
-
-    companion object {
-        const val DEVICE_ID_ARG = "deviceId"
-    }
 }

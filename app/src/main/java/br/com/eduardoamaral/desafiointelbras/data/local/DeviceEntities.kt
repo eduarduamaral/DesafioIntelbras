@@ -25,6 +25,12 @@ data class DeviceEntity(
     val serial: String? = null,
     val username: String? = null,
     @ColumnInfo(name = "mac_address") val macAddress: String? = null,
+    /**
+     * SyncState.name. O valor padrão no banco faz a migração preencher as linhas que já
+     * existiam como SYNCED. Dados vindos do servidor entram sempre como SYNCED.
+     */
+    @ColumnInfo(name = "sync_state", defaultValue = "SYNCED")
+    val syncState: String = SyncState.SYNCED.name,
 )
 
 /**
@@ -48,7 +54,10 @@ data class FavoriteEntity(
 )
 
 /**
- * View do banco com cada dispositivo e se ele é favorito.
+ * View do banco com os dispositivos VISÍVEIS e se cada um é favorito.
+ *
+ * Visível = não está com remoção pendente. Com a remoção otimista, o item some da tela na
+ * hora, mas a linha só é apagada quando o servidor confirma (se ele recusar, o item volta).
  *
  * A regra "é favorito = existe linha em favorites" fica definida só aqui; as queries do
  * DAO leem desta view e só acrescentam o WHERE. O Room sabe que a view lê devices e
@@ -61,6 +70,7 @@ data class FavoriteEntity(
         SELECT d.*, (f.device_id IS NOT NULL) AS is_favorite
         FROM devices d
         LEFT JOIN favorites f ON f.device_id = d.id
+        WHERE d.sync_state != 'PENDING_DELETE'
     """,
 )
 data class DeviceWithFavorite(

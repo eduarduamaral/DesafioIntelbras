@@ -139,4 +139,100 @@ class DeviceDaoTest {
         // Mesmo critério do mapper: o que a lista não exibe não entra no total.
         assertEquals(1, dao.observeCount().first())
     }
+
+    // ---- Remoção otimista e fila (Outbox) ----
+
+    @Test
+    fun remocaoPendenteEscondeDaListaEDaContagemMasMantemALinha() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B")))
+
+        assertTrue(dao.enqueueDelete("v1", createdAt = 1))
+
+        assertEquals(listOf("v2"), allIds())
+        assertEquals(1, dao.observeCount().first())
+        assertEquals(null, dao.getDevice("v1")) // a view não mostra
+        assertEquals(SyncState.PENDING_DELETE.name, dao.getDeviceEntity("v1")?.syncState) // a linha existe
+        assertEquals(OperationType.DELETE.name, dao.getPendingOperation("v1")?.operation)
+    }
+
+    @Test
+    fun syncNaoRessuscitaItemComRemocaoPendente() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.enqueueDelete("v1", createdAt = 1)
+
+        // O refresh roda antes da fila enviar o DELETE: o servidor ainda tem o item.
+        dao.syncType("VIDEO", listOf(video("v1", "A renomeado no servidor")))
+
+        assertTrue(allIds().isEmpty())
+        assertEquals(SyncState.PENDING_DELETE.name, dao.getDeviceEntity("v1")?.syncState)
+        assertEquals(1, dao.getPendingOperations().size)
+    }
+
+    @Test
+    fun confirmarRemocaoApagaALinhaOFavoritoEAOperacao() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.toggleFavorite("v1")
+        dao.enqueueDelete("v1", createdAt = 1)
+
+        dao.confirmDelete("v1")
+
+        assertEquals(null, dao.getDeviceEntity("v1"))
+        assertFalse(dao.isFavorite("v1"))
+        assertTrue(dao.getPendingOperations().isEmpty())
+    }
+
+    @Test
+    fun desfazerRemocaoDevolveOItemComOFavorito() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.toggleFavorite("v1")
+        dao.enqueueDelete("v1", createdAt = 1)
+
+        dao.rollbackDelete("v1")
+
+        val device = dao.getDevice("v1")!!
+        assertTrue(device.isFavorite)
+        assertEquals(SyncState.SYNCED.name, device.device.syncState)
+        assertTrue(dao.getPendingOperations().isEmpty())
+    }
+
+    @Test
+    fun removerDuasVezesMantemUmaOperacaoNaPosicaoOriginal() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.enqueueDelete("v1", createdAt = 10)
+
+        dao.enqueueDelete("v1", createdAt = 99)
+
+        val operations = dao.getPendingOperations()
+        assertEquals(1, operations.size)
+        assertEquals(10L, operations.single().createdAt)
+    }
+
+    @Test
+    fun removerItemComCriacaoPendenteNaoEnviaNada() = runTest {
+        // Item criado offline: existe só no app.
+        dao.upsert(video("tmp-1", "Novo").copy(syncState = SyncState.PENDING_CREATE.name))
+        dao.upsertPendingOperation(
+            PendingOperationEntity("tmp-1", OperationType.CREATE.name, "VIDEO", createdAt = 1),
+        )
+
+        dao.enqueueDelete("tmp-1", createdAt = 2)
+
+        assertEquals(null, dao.getDeviceEntity("tmp-1"))
+        assertTrue(dao.getPendingOperations().isEmpty())
+    }
+
+    @Test
+    fun filaEhLidaDaOperacaoMaisAntigaParaAMaisNova() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B")))
+        dao.enqueueDelete("v2", createdAt = 5)
+        dao.enqueueDelete("v1", createdAt = 7)
+
+        assertEquals(listOf("v2", "v1"), dao.getPendingOperations().map { it.deviceId })
+    }
+
+    @Test
+    fun removerItemInexistenteRetornaFalse() = runTest {
+        assertFalse(dao.enqueueDelete("nao-existe", createdAt = 1))
+        assertTrue(dao.getPendingOperations().isEmpty())
+    }
 }

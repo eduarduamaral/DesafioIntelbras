@@ -50,6 +50,60 @@ class AppDatabaseMigrationTest {
         db.close()
     }
 
+    @Test
+    fun migra2Para3MarcandoTudoComoSincronizadoECriandoAFila() {
+        helper.createDatabase(TEST_DB, 2).apply {
+            execSQL(
+                """
+                INSERT INTO devices (id, type, name, password, serial, username, mac_address)
+                VALUES ('v1', 'VIDEO', 'Câmera', '1234', 'SN1', 'admin', NULL)
+                """.trimIndent(),
+            )
+            execSQL("INSERT INTO favorites (device_id) VALUES ('v1')")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 3, true)
+
+        // Linhas antigas recebem o valor padrão da coluna nova.
+        db.query("SELECT sync_state FROM devices WHERE id = 'v1'").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("SYNCED", cursor.getString(0))
+        }
+        // A fila nasce vazia e o item continua visível na view, com o favorito.
+        db.query("SELECT COUNT(*) FROM pending_operations").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT is_favorite FROM device_with_favorite WHERE id = 'v1'").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(1, cursor.getInt(0))
+        }
+        db.close()
+    }
+
+    @Test
+    fun migra1Ate3EmSequencia() {
+        helper.createDatabase(TEST_DB, 1).apply {
+            execSQL(
+                """
+                INSERT INTO devices (id, type, name, password, serial, username, mac_address)
+                VALUES ('a1', 'ALARM', 'Central', '123456', NULL, NULL, '1A2B3C4D5E6F')
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        // Quem pulou a versão 2 também precisa chegar inteiro na 3.
+        val db = helper.runMigrationsAndValidate(TEST_DB, 3, true)
+
+        db.query("SELECT id FROM device_with_favorite").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("a1", cursor.getString(0))
+        }
+        db.close()
+    }
+
     private companion object {
         const val TEST_DB = "migration-test.db"
     }

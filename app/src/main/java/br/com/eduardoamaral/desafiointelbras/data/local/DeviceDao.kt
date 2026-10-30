@@ -39,7 +39,10 @@ abstract class DeviceDao {
     @Query("SELECT * FROM device_with_favorite WHERE id = :id")
     abstract suspend fun getDevice(id: String): DeviceWithFavorite?
 
-    @Query("SELECT COUNT(*) FROM devices WHERE type IN ('VIDEO', 'ALARM')")
+    // Lê só devices (não a view) para não reexecutar quando um favorito muda.
+    @Query(
+        "SELECT COUNT(*) FROM devices WHERE type IN ('VIDEO', 'ALARM') AND sync_state != 'PENDING_DELETE'",
+    )
     abstract fun observeCount(): Flow<Int>
 
     // @Upsert faz INSERT e, se a chave já existe, UPDATE. Diferente de
@@ -64,13 +67,18 @@ abstract class DeviceDao {
      * Deixa os dispositivos de um tipo iguais à lista do servidor numa única transação:
      * atualiza/insere o que veio e remove o que sumiu. Cada tipo é sincronizado
      * separadamente porque vem de um endpoint diferente; se um falhar, o outro segue.
+     *
+     * Itens com operação na fila não são sobrescritos: a versão local é a mais nova.
+     * Sem isso, um refresh que rodasse antes da fila enviar um DELETE "ressuscitaria"
+     * o item (o servidor ainda o tem e o upsert voltaria o estado para SYNCED).
      */
     @Transaction
     open suspend fun syncType(type: String, devices: List<DeviceEntity>) {
+        val pending = pendingDeviceIds().toSet()
         if (devices.isEmpty()) {
             deleteByType(type)
         } else {
-            upsertAll(devices)
+            upsertAll(devices.filterNot { it.id in pending })
             deleteByTypeExcept(type, devices.map { it.id })
         }
     }
@@ -88,4 +96,85 @@ abstract class DeviceDao {
     open suspend fun toggleFavorite(id: String) {
         if (isFavorite(id)) deleteFavorite(id) else insertFavorite(FavoriteEntity(id))
     }
+
+    // ---- Fila de operações pendentes (Outbox) ----
+    // Cada mudança local e sua entrada na fila são gravadas na MESMA transação:
+    // nunca fica um item escondido sem operação na fila, nem o contrário.
+
+    @Query("SELECT device_id FROM pending_operations")
+    abstract suspend fun pendingDeviceIds(): List<String>
+
+    @Query("SELECT * FROM pending_operations WHERE device_id = :id")
+    abstract suspend fun getPendingOperation(id: String): PendingOperationEntity?
+
+    /** Ordem de envio: da operação mais antiga para a mais nova. */
+    @Query("SELECT * FROM pending_operations ORDER BY created_at")
+    abstract suspend fun getPendingOperations(): List<PendingOperationEntity>
+
+    /** Para a UI mostrar "N alterações aguardando conexão". */
+    @Query("SELECT COUNT(*) FROM pending_operations")
+    abstract fun observePendingCount(): Flow<Int>
+
+    @Upsert
+    abstract suspend fun upsertPendingOperation(operation: PendingOperationEntity)
+
+    @Query("DELETE FROM pending_operations WHERE device_id = :id")
+    abstract suspend fun deletePendingOperation(id: String)
+
+    @Query("UPDATE devices SET sync_state = :state WHERE id = :id")
+    abstract suspend fun setSyncState(id: String, state: String)
+
+    /**
+     * Remoção otimista: esconde o item e põe a remoção na fila, numa transação só.
+     *
+     * Combina com o que já estava pendente para o mesmo dispositivo:
+     * - criação pendente + remoção = nada a enviar: o servidor nunca soube do item,
+     *   então ele é apagado de vez e a criação sai da fila;
+     * - edição pendente + remoção = só a remoção (editar algo que vai sumir é inútil);
+     * - remoção pendente + remoção = continua uma só, mantendo a posição na fila.
+     *
+     * @return false se o dispositivo não existe no banco local.
+     */
+    @Transaction
+    open suspend fun enqueueDelete(id: String, createdAt: Long): Boolean {
+        val device = getDeviceEntity(id) ?: return false
+        val previous = getPendingOperation(id)
+        if (previous?.operation == OperationType.CREATE.name) {
+            deleteById(id)
+            deletePendingOperation(id)
+            return true
+        }
+        setSyncState(id, SyncState.PENDING_DELETE.name)
+        upsertPendingOperation(
+            PendingOperationEntity(
+                deviceId = id,
+                operation = OperationType.DELETE.name,
+                deviceType = device.type,
+                createdAt = previous?.createdAt ?: createdAt,
+            ),
+        )
+        return true
+    }
+
+    /** O servidor confirmou a remoção: apaga de vez (o CASCADE leva o favorito junto). */
+    @Transaction
+    open suspend fun confirmDelete(id: String) {
+        deleteById(id)
+        deletePendingOperation(id)
+    }
+
+    /** O servidor recusou a remoção de vez: o item volta para a lista, com o favorito. */
+    @Transaction
+    open suspend fun rollbackDelete(id: String) {
+        setSyncState(id, SyncState.SYNCED.name)
+        deletePendingOperation(id)
+    }
+
+    /** Falha temporária: conta a tentativa e mantém na fila. */
+    @Query("UPDATE pending_operations SET attempts = attempts + 1 WHERE device_id = :id")
+    abstract suspend fun incrementAttempts(id: String)
+
+    /** Lê a linha crua, inclusive se estiver escondida pela view. */
+    @Query("SELECT * FROM devices WHERE id = :id")
+    abstract suspend fun getDeviceEntity(id: String): DeviceEntity?
 }

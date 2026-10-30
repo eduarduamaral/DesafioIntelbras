@@ -110,6 +110,28 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `total do cabecalho ignora filtro e busca`() = runTest {
+        val viewModel = createViewModel()
+        assertEquals(2, viewModel.uiState.value.totalCount)
+
+        viewModel.onFilterSelected(DeviceFilter.FAVORITES)
+        viewModel.onQueryChange("central")
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(alarm), state.devices)
+        assertEquals(2, state.totalCount)
+    }
+
+    @Test
+    fun `total do cabecalho acompanha a remocao`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.onDeleteDevice(camera.id)
+
+        assertEquals(1, viewModel.uiState.value.totalCount)
+    }
+
+    @Test
     fun `alternar favorito atualiza a lista`() = runTest {
         val viewModel = createViewModel()
 

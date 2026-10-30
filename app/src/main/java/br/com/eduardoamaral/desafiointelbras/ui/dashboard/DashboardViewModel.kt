@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,7 +40,7 @@ class DashboardViewModel @Inject constructor(
     private val devices: Flow<List<Device>?> = combine(query, filter) { q, f -> q to f }
         .flatMapLatest { (q, f) -> repository.observeDevices(q, f) }
 
-    private val totalCount: Flow<Int> = repository.observeDevices("", DeviceFilter.ALL).map { it.size }
+    private val totalCount: Flow<Int> = repository.observeDeviceCount()
 
     // combine aceita até 5 fluxos tipados: lista e total vão juntos num par.
     private val listAndTotal: Flow<Pair<List<Device>?, Int>> = combine(

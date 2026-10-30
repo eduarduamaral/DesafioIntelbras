@@ -17,6 +17,9 @@ interface DeviceRepository {
     fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>>
     fun observeDevice(id: String): Flow<Device?>
 
+    /** Total cadastrado, independente de filtro e busca (cabeçalho do dashboard). */
+    fun observeDeviceCount(): Flow<Int>
+
     /** Busca vídeos e alarmes na API e sincroniza o banco local, preservando os favoritos. */
     suspend fun refresh(): Outcome<Unit>
 

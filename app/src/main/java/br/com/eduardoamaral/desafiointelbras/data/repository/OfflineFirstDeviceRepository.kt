@@ -40,6 +40,8 @@ class OfflineFirstDeviceRepository @Inject constructor(
 
     override fun observeDevice(id: String): Flow<Device?> = local.observeDevice(id)
 
+    override fun observeDeviceCount(): Flow<Int> = local.observeCount()
+
     /**
      * Busca os dois tipos em paralelo e sincroniza cada um de forma independente.
      * Se um falhar, o outro ainda é atualizado; o erro retornado é o da primeira falha.

@@ -67,6 +67,8 @@ class FakeDeviceRepository : DeviceRepository {
     override fun observeDevice(id: String): Flow<Device?> =
         devices.map { list -> list.firstOrNull { it.id == id } }
 
+    override fun observeDeviceCount(): Flow<Int> = devices.map { it.size }
+
     override suspend fun refresh(): Outcome<Unit> {
         refreshCount++
         return refreshResult
@@ -115,6 +117,8 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
 
     override fun observeDevice(id: String): Flow<Device?> =
         combine(devices, favorites) { list, favs -> list.withFavorites(favs).firstOrNull { it.id == id } }
+
+    override fun observeCount(): Flow<Int> = devices.map { it.size }
 
     override suspend fun getDevice(id: String): Device? = snapshot.firstOrNull { it.id == id }
 

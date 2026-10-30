@@ -16,6 +16,10 @@ import javax.inject.Inject
 interface DeviceLocalDataSource {
     fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>>
     fun observeDevice(id: String): Flow<Device?>
+
+    /** Total cadastrado, sem filtro nem busca. Contado no próprio banco. */
+    fun observeCount(): Flow<Int>
+
     suspend fun getDevice(id: String): Device?
 
     /** Substitui os dispositivos de um tipo pelos do servidor, sem mexer nos favoritos. */
@@ -44,6 +48,8 @@ class RoomDeviceLocalDataSource @Inject constructor(
 
     override fun observeDevice(id: String): Flow<Device?> =
         dao.observeDevice(id).map { it?.toDomain() }
+
+    override fun observeCount(): Flow<Int> = dao.observeCount()
 
     override suspend fun getDevice(id: String): Device? = dao.getDevice(id)?.toDomain()
 

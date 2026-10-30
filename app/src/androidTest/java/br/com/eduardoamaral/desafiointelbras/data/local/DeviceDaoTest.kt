@@ -104,4 +104,39 @@ class DeviceDaoTest {
 
         assertEquals(listOf("1"), result)
     }
+
+    @Test
+    fun contagemAcompanhaSincronizacaoERemocao() = runTest {
+        assertEquals(0, dao.observeCount().first())
+
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B")))
+        dao.syncType("ALARM", listOf(alarm("a1", "C")))
+        assertEquals(3, dao.observeCount().first())
+
+        dao.deleteById("v1")
+        assertEquals(2, dao.observeCount().first())
+
+        dao.syncType("ALARM", emptyList())
+        assertEquals(1, dao.observeCount().first())
+    }
+
+    @Test
+    fun contagemNaoMudaAoMarcarFavorito() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B")))
+
+        dao.toggleFavorite("v1")
+
+        // O total é de dispositivos, não de favoritos. A query só lê a tabela devices,
+        // então o Room nem reexecuta a contagem quando favorites muda.
+        assertEquals(2, dao.observeCount().first())
+    }
+
+    @Test
+    fun contagemIgnoraLinhaComTipoDesconhecido() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.upsert(DeviceEntity("x1", "OTHER", "Tipo inválido", password = "1234"))
+
+        // Mesmo critério do mapper: o que a lista não exibe não entra no total.
+        assertEquals(1, dao.observeCount().first())
+    }
 }

@@ -52,6 +52,9 @@ abstract class DeviceDao {
     )
     abstract suspend fun getDevice(id: String): DeviceWithFavorite?
 
+    @Query("SELECT COUNT(*) FROM devices WHERE type IN ('VIDEO', 'ALARM')")
+    abstract fun observeCount(): Flow<Int>
+
     // @Upsert faz INSERT e, se a chave já existe, UPDATE. Diferente de
     // OnConflictStrategy.REPLACE, ele NÃO apaga a linha antiga; um DELETE
     // dispararia o CASCADE e apagaria o favorito.

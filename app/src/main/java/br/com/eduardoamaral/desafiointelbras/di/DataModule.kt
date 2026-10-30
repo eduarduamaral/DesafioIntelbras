@@ -5,6 +5,8 @@ import br.com.eduardoamaral.desafiointelbras.data.local.RoomDeviceLocalDataSourc
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.remote.RetrofitDeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.repository.OfflineFirstDeviceRepository
+import br.com.eduardoamaral.desafiointelbras.data.sync.SyncScheduler
+import br.com.eduardoamaral.desafiointelbras.data.sync.WorkManagerSyncScheduler
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import dagger.Binds
 import dagger.Module
@@ -23,4 +25,7 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindDeviceRemoteDataSource(impl: RetrofitDeviceRemoteDataSource): DeviceRemoteDataSource
+
+    @Binds
+    abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler
 }

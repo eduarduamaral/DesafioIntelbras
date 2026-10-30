@@ -8,11 +8,14 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
+import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceApi
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceLocalDataSource
+import br.com.eduardoamaral.desafiointelbras.testutil.FakeSyncScheduler
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -23,6 +26,7 @@ class OfflineFirstDeviceRepositoryTest {
 
     private lateinit var api: FakeDeviceApi
     private lateinit var local: FakeDeviceLocalDataSource
+    private lateinit var scheduler: FakeSyncScheduler
     private lateinit var repository: OfflineFirstDeviceRepository
 
     private val camera = VideoDeviceDto("v1", "Câmera", "ABC123", "admin", "1234")
@@ -34,7 +38,8 @@ class OfflineFirstDeviceRepositoryTest {
         local = FakeDeviceLocalDataSource()
         // Fonte remota real sobre a API falsa: os testes cobrem também a conversão de DTOs
         // e a tradução de erros HTTP feitas pela RetrofitDeviceRemoteDataSource.
-        repository = OfflineFirstDeviceRepository(RetrofitDeviceRemoteDataSource(api), local)
+        scheduler = FakeSyncScheduler()
+        repository = OfflineFirstDeviceRepository(RetrofitDeviceRemoteDataSource(api), local, scheduler)
     }
 
     private fun httpError(code: Int) = HttpException(Response.error<Any>(code, "".toResponseBody()))
@@ -145,36 +150,125 @@ class OfflineFirstDeviceRepositoryTest {
         assertEquals(DeviceDetails.Video("XYZ", "root", "abcd"), local.snapshot.single().details)
     }
 
-    @Test
-    fun `delete usa o endpoint do tipo do dispositivo`() = runTest {
-        api.videos += camera
-        api.alarms += central
-        repository.refresh()
-
-        repository.delete("a1")
-
-        assertEquals(listOf("a1"), api.deletedAlarmIds)
-        assertTrue(api.deletedVideoIds.isEmpty())
-        assertEquals(listOf("v1"), local.snapshot.map { it.id })
-    }
+    // ---- Remoção otimista e fila de pendências ----
 
     @Test
-    fun `delete com 404 remove localmente e retorna sucesso`() = runTest {
-        api.videos += camera
-        repository.refresh()
-        api.videoError = httpError(404)
-
-        assertEquals(Outcome.Success(Unit), repository.delete("v1"))
-        assertTrue(local.snapshot.isEmpty())
-    }
-
-    @Test
-    fun `delete com falha de rede mantem o dispositivo`() = runTest {
+    fun `delete esconde na hora e agenda o envio mesmo sem rede`() = runTest {
         api.videos += camera
         repository.refresh()
         api.videoError = FakeDeviceApi.NETWORK_ERROR
 
-        assertEquals(Outcome.Failure(AppError.Network), repository.delete("v1"))
-        assertEquals(1, local.snapshot.size)
+        val result = repository.delete("v1")
+
+        assertEquals(Outcome.Success(Unit), result)
+        assertTrue(local.snapshot.isEmpty())
+        assertEquals(setOf("v1"), local.pendingIds)
+        assertEquals(1, scheduler.scheduled)
+        assertTrue(api.deletedVideoIds.isEmpty()) // nada foi enviado ainda
+    }
+
+    @Test
+    fun `delete de item inexistente retorna NotFound e nao agenda`() = runTest {
+        assertEquals(Outcome.Failure(AppError.NotFound), repository.delete("nao-existe"))
+        assertEquals(0, scheduler.scheduled)
+    }
+
+    @Test
+    fun `envio da fila usa o endpoint do tipo do dispositivo`() = runTest {
+        api.videos += camera
+        api.alarms += central
+        repository.refresh()
+        repository.delete("a1")
+
+        val result = repository.syncPendingOperations()
+
+        assertEquals(PendingSyncResult.DONE, result)
+        assertEquals(listOf("a1"), api.deletedAlarmIds)
+        assertTrue(api.deletedVideoIds.isEmpty())
+        assertFalse(local.hasRow("a1"))
+        assertTrue(local.pendingIds.isEmpty())
+        assertEquals(listOf("v1"), local.snapshot.map { it.id })
+    }
+
+    @Test
+    fun `envio com 404 confirma a remocao`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        repository.delete("v1")
+        api.videoError = httpError(404)
+
+        assertEquals(PendingSyncResult.DONE, repository.syncPendingOperations())
+        assertFalse(local.hasRow("v1"))
+        assertTrue(local.pendingIds.isEmpty())
+    }
+
+    @Test
+    fun `envio sem rede mantem a remocao pendente e pede nova tentativa`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        repository.delete("v1")
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+
+        assertEquals(PendingSyncResult.RETRY_LATER, repository.syncPendingOperations())
+        assertTrue(local.snapshot.isEmpty()) // continua escondido
+        assertEquals(setOf("v1"), local.pendingIds)
+        assertEquals(1, local.failedAttempts["v1"])
+    }
+
+    @Test
+    fun `envio recusado desfaz a remocao e o item volta com o favorito`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        repository.toggleFavorite("v1")
+        repository.delete("v1")
+        api.videoError = httpError(400)
+
+        assertEquals(PendingSyncResult.DONE, repository.syncPendingOperations())
+        val device = local.snapshot.single()
+        assertEquals("v1", device.id)
+        assertTrue(device.isFavorite)
+        assertTrue(local.pendingIds.isEmpty())
+    }
+
+    @Test
+    fun `token invalido pausa a fila sem descartar nada`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        repository.delete("v1")
+        api.videoError = httpError(403)
+
+        assertEquals(PendingSyncResult.BLOCKED, repository.syncPendingOperations())
+        assertEquals(setOf("v1"), local.pendingIds)
+        assertTrue(local.snapshot.isEmpty())
+    }
+
+    @Test
+    fun `falha temporaria interrompe a rodada para manter a ordem`() = runTest {
+        api.videos += camera
+        api.alarms += central
+        repository.refresh()
+        repository.delete("v1") // primeira da fila
+        repository.delete("a1")
+        api.videoError = FakeDeviceApi.NETWORK_ERROR // só o endpoint de vídeo falha
+
+        assertEquals(PendingSyncResult.RETRY_LATER, repository.syncPendingOperations())
+        assertTrue(api.deletedAlarmIds.isEmpty()) // a1 não "furou a fila"
+        assertEquals(setOf("v1", "a1"), local.pendingIds)
+    }
+
+    @Test
+    fun `refresh envia as pendencias antes de buscar e o item nao volta`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.delete("v1") // removido offline
+
+        api.videoError = null // a conexão voltou
+        val result = repository.refresh()
+
+        assertEquals(Outcome.Success(Unit), result)
+        assertEquals(listOf("v1"), api.deletedVideoIds)
+        assertTrue(local.snapshot.isEmpty())
+        assertFalse(local.hasRow("v1"))
     }
 }

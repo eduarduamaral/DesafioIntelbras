@@ -1,13 +1,19 @@
 package br.com.eduardoamaral.desafiointelbras.data.repository
 
 import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
+import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
+import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceRemoteDataSource
+import br.com.eduardoamaral.desafiointelbras.data.sync.SyncScheduler
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
+import br.com.eduardoamaral.desafiointelbras.domain.model.FailureKind
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
+import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
+import br.com.eduardoamaral.desafiointelbras.domain.model.failureKind
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -23,14 +29,18 @@ import javax.inject.Singleton
  *
  * Room e Retrofit (funções suspend) já são main-safe, por isso não há withContext(IO) aqui.
  *
- * O [mutex] serializa as operações que escrevem no banco a partir da API. Sem ele, um refresh
- * iniciado antes de um "criar" poderia terminar depois e apagar o item recém-criado
- * (a lista do servidor ainda não o tinha).
+ * O [mutex] serializa as operações que escrevem no banco a partir da API (refresh, criar,
+ * editar e o envio da fila). Sem ele, um refresh iniciado antes de um "criar" poderia
+ * terminar depois e apagar o item recém-criado (a lista do servidor ainda não o tinha).
+ *
+ * Remoção é otimista (padrão Outbox): muda o banco e enfileira numa transação, e o
+ * [syncScheduler] pede o envio, que acontece quando houver conexão.
  */
 @Singleton
 class OfflineFirstDeviceRepository @Inject constructor(
     private val remote: DeviceRemoteDataSource,
     private val local: DeviceLocalDataSource,
+    private val syncScheduler: SyncScheduler,
 ) : DeviceRepository {
 
     private val mutex = Mutex()
@@ -46,8 +56,12 @@ class OfflineFirstDeviceRepository @Inject constructor(
      * Busca os dois tipos em paralelo e sincroniza cada um de forma independente.
      * Se um falhar, o outro ainda é atualizado; o erro retornado é o da primeira falha.
      * Em qualquer falha, o banco local daquele tipo fica intacto (offline mostra o último sync).
+     *
+     * Antes de buscar, envia a fila de pendências ("empurra, depois puxa"): assim o que o
+     * usuário mudou offline chega ao servidor antes de a lista do servidor ser aplicada.
      */
     override suspend fun refresh(): Outcome<Unit> = mutex.withLock {
+        sendPendingOperations()
         coroutineScope {
             val results = DeviceType.entries
                 .map { type -> type to async { remote.fetchDevices(type) } }
@@ -69,21 +83,62 @@ class OfflineFirstDeviceRepository @Inject constructor(
         remote.update(id, input).alsoSaveLocally()
     }
 
-    override suspend fun delete(id: String): Outcome<Unit> = mutex.withLock {
-        // O tipo vem do banco local: ele decide qual endpoint chamar.
-        val device = local.getDevice(id) ?: return@withLock Outcome.Failure(AppError.NotFound)
-        when (val result = remote.delete(id, device.type)) {
-            is Outcome.Success -> {
-                local.delete(id)
-                result
+    /**
+     * Remoção otimista: some da lista na hora (com ou sem rede) e entra na fila.
+     * Não precisa do mutex: a transação do banco já garante a consistência, e o envio
+     * (que conversa com a API) acontece depois, sob o mutex, em [syncPendingOperations].
+     */
+    override suspend fun delete(id: String): Outcome<Unit> {
+        if (!local.enqueueDelete(id)) return Outcome.Failure(AppError.NotFound)
+        syncScheduler.schedule()
+        return Outcome.Success(Unit)
+    }
+
+    override suspend fun syncPendingOperations(): PendingSyncResult = mutex.withLock {
+        sendPendingOperations()
+    }
+
+    /**
+     * Envia a fila em ordem (da mais antiga para a mais nova). Chamar só com o [mutex].
+     *
+     * Para na primeira falha temporária, em vez de pular para a próxima operação: manter a
+     * ordem importa quando houver criar/editar/remover do mesmo item, e sem rede as próximas
+     * falhariam do mesmo jeito.
+     */
+    private suspend fun sendPendingOperations(): PendingSyncResult {
+        for (operation in local.pendingOperations()) {
+            val result = when (operation.operation) {
+                OperationType.DELETE -> sendDelete(operation)
+                // Criar/editar offline ainda não geram operações (ver README, próximos passos).
+                OperationType.CREATE, OperationType.UPDATE -> null
             }
-            // Se o servidor já não tem o item, o estado desejado foi alcançado.
-            is Outcome.Failure -> if (result.error == AppError.NotFound) {
-                local.delete(id)
-                Outcome.Success(Unit)
-            } else {
-                result
+            if (result != null) return result
+        }
+        return PendingSyncResult.DONE
+    }
+
+    /** @return null para seguir para a próxima operação, ou o motivo para parar a rodada. */
+    private suspend fun sendDelete(operation: PendingOperation): PendingSyncResult? {
+        val id = operation.deviceId
+        val result = remote.delete(id, operation.deviceType)
+        if (result is Outcome.Success) {
+            local.confirmDelete(id)
+            return null
+        }
+        return when ((result as Outcome.Failure).error.failureKind()) {
+            FailureKind.ALREADY_DONE -> { // 404: o servidor já não tem o item
+                local.confirmDelete(id)
+                null
             }
+            FailureKind.REJECTED -> { // recusado de vez: o item volta para a lista
+                local.rollbackDelete(id)
+                null
+            }
+            FailureKind.TRANSIENT -> {
+                local.registerFailedAttempt(id)
+                PendingSyncResult.RETRY_LATER
+            }
+            FailureKind.AUTH -> PendingSyncResult.BLOCKED // nada é descartado
         }
     }
 

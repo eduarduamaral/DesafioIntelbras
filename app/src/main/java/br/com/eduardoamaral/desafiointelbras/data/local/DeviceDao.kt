@@ -24,7 +24,7 @@ abstract class DeviceDao {
         WHERE name LIKE '%' || :query || '%' ESCAPE '\'
           AND (:type IS NULL OR type = :type)
           AND (:onlyFavorites = 0 OR is_favorite = 1)
-        ORDER BY name COLLATE NOCASE
+        ORDER BY sort_order DESC, id
         """,
     )
     abstract fun observeDevices(
@@ -48,11 +48,28 @@ abstract class DeviceDao {
     // @Upsert faz INSERT e, se a chave já existe, UPDATE. Diferente de
     // OnConflictStrategy.REPLACE, ele NÃO apaga a linha antiga; um DELETE
     // dispararia o CASCADE e apagaria o favorito.
+    // Gravam o sort_order recebido; fora do DAO use upsert/syncType, que cuidam dele.
     @Upsert
-    abstract suspend fun upsert(device: DeviceEntity)
+    protected abstract suspend fun upsertEntity(device: DeviceEntity)
 
     @Upsert
-    abstract suspend fun upsertAll(devices: List<DeviceEntity>)
+    protected abstract suspend fun upsertEntities(devices: List<DeviceEntity>)
+
+    @Query("SELECT COALESCE(MAX(sort_order), 0) FROM devices")
+    abstract suspend fun maxSortOrder(): Long
+
+    @Query("SELECT * FROM devices WHERE type = :type")
+    protected abstract suspend fun getByType(type: String): List<DeviceEntity>
+
+    /**
+     * Grava um dispositivo vindo de criação ou edição. Novo vai para o topo da lista;
+     * existente mantém a posição (editar não reordena).
+     */
+    @Transaction
+    open suspend fun upsert(device: DeviceEntity) {
+        val order = getDeviceEntity(device.id)?.sortOrder ?: (maxSortOrder() + 1)
+        upsertEntity(device.copy(sortOrder = order))
+    }
 
     @Query("DELETE FROM devices WHERE id = :id")
     abstract suspend fun deleteById(id: String)
@@ -71,16 +88,25 @@ abstract class DeviceDao {
      * Itens com operação na fila não são sobrescritos: a versão local é a mais nova.
      * Sem isso, um refresh que rodasse antes da fila enviar um DELETE "ressuscitaria"
      * o item (o servidor ainda o tem e o upsert voltaria o estado para SYNCED).
+     *
+     * Ordem: quem já existe mantém o sort_order; quem é novo recebe números seguidos, na
+     * ordem da resposta (a API lista do mais antigo para o mais novo, então o último fica
+     * no topo). Por ser transação, o MAX não se mistura com outra gravação em paralelo.
      */
     @Transaction
     open suspend fun syncType(type: String, devices: List<DeviceEntity>) {
-        val pending = pendingDeviceIds().toSet()
         if (devices.isEmpty()) {
             deleteByType(type)
-        } else {
-            upsertAll(devices.filterNot { it.id in pending })
-            deleteByTypeExcept(type, devices.map { it.id })
+            return
         }
+        val pending = pendingDeviceIds().toSet()
+        val knownOrder = getByType(type).associate { it.id to it.sortOrder }
+        var next = maxSortOrder()
+        val toSave = devices
+            .filterNot { it.id in pending }
+            .map { device -> device.copy(sortOrder = knownOrder[device.id] ?: ++next) }
+        upsertEntities(toSave)
+        deleteByTypeExcept(type, devices.map { it.id })
     }
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE device_id = :id)")

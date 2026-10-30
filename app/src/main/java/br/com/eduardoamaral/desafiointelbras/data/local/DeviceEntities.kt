@@ -31,6 +31,14 @@ data class DeviceEntity(
      */
     @ColumnInfo(name = "sync_state", defaultValue = "SYNCED")
     val syncState: String = SyncState.SYNCED.name,
+    /**
+     * Posição na lista: quanto maior, mais recentemente o dispositivo foi adicionado.
+     * A API não informa data de criação, então o app numera os dispositivos na ordem em
+     * que fica sabendo deles. Um contador (e não um horário) não empata e não depende do
+     * relógio do aparelho. Só o DeviceDao atribui este valor; editar ou sincronizar mantém.
+     */
+    @ColumnInfo(name = "sort_order", defaultValue = "0")
+    val sortOrder: Long = 0,
 )
 
 /**

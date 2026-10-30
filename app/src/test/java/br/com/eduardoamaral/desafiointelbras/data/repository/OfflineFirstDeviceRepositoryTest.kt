@@ -327,4 +327,21 @@ class OfflineFirstDeviceRepositoryTest {
 
         assertEquals(Outcome.Failure(AppError.Conflict), repository.create(input))
     }
+
+    @Test
+    fun `dispositivo criado aparece no topo e editar nao muda a posicao`() = runTest {
+        api.videos += camera
+        repository.refresh()
+
+        val created = repository.create(DeviceInput.Alarm("Casa", "AABBCCDDEEFF", "1234"))
+        val alarmId = (created as Outcome.Success).data.id
+        assertEquals(listOf(alarmId, "v1"), local.snapshot.map { it.id })
+
+        repository.update(
+            "v1",
+            DeviceInput.Video(name = "Câmera renomeada", serial = "ABC123", username = "admin", password = "1234"),
+        )
+        repository.refresh()
+        assertEquals(listOf(alarmId, "v1"), local.snapshot.map { it.id })
+    }
 }

@@ -50,7 +50,7 @@ fun alarmDevice(id: String, name: String, isFavorite: Boolean = false) = Device(
 
 val networkFailure = Outcome.Failure(AppError.Network)
 
-/** Filtro em memória com a mesma regra da query SQL. */
+/** Filtro em memória com a mesma regra da query SQL. Não reordena: recebe a lista já na ordem final. */
 private fun List<Device>.applyFilter(query: String, filter: DeviceFilter): List<Device> =
     filter { it.name.contains(query, ignoreCase = true) }
         .filter {
@@ -61,9 +61,9 @@ private fun List<Device>.applyFilter(query: String, filter: DeviceFilter): List<
                 DeviceFilter.ALARM -> it.type == DeviceType.ALARM
             }
         }
-        .sortedBy { it.name.lowercase() }
 
 class FakeDeviceRepository : DeviceRepository {
+    /** Na ordem em que foram adicionados; a leitura devolve do mais recente para o mais antigo. */
     val devices = MutableStateFlow<List<Device>>(emptyList())
     var refreshResult: Outcome<Unit> = Outcome.Success(Unit)
     var writeError: AppError? = null
@@ -72,7 +72,7 @@ class FakeDeviceRepository : DeviceRepository {
     val updated = mutableListOf<Pair<String, DeviceInput>>()
 
     override fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>> =
-        devices.map { it.applyFilter(query, filter) }
+        devices.map { it.asReversed().applyFilter(query, filter) }
 
     override fun observeDevice(id: String): Flow<Device?> =
         devices.map { list -> list.firstOrNull { it.id == id } }
@@ -127,8 +127,8 @@ class FakeDeviceRepository : DeviceRepository {
 
 /**
  * Banco local em memória, com as mesmas regras do DeviceDao (testadas com SQLite real em
- * DeviceDaoTest): remoção pendente esconde o item sem apagar, e a sincronização não
- * sobrescreve itens com operação na fila.
+ * DeviceDaoTest): remoção pendente esconde o item sem apagar, a sincronização não
+ * sobrescreve itens com operação na fila e a lista vem do mais recente para o mais antigo.
  */
 class FakeDeviceLocalDataSource : DeviceLocalDataSource {
     private val devices = MutableStateFlow<List<Device>>(emptyList())
@@ -138,14 +138,23 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
     private val pending = MutableStateFlow<Map<String, PendingOperation>>(linkedMapOf())
     val failedAttempts = mutableMapOf<String, Int>()
 
-    /** O que a lista mostra: sem remoções pendentes. */
-    val snapshot: List<Device> get() = visible(devices.value, pending.value).withFavorites(favorites.value)
+    /** Espelha devices.sort_order: número atribuído uma vez, na primeira gravação. */
+    private val sortOrder = mutableMapOf<String, Long>()
+    private fun assignOrder(id: String) {
+        sortOrder.getOrPut(id) { (sortOrder.values.maxOrNull() ?: 0L) + 1 }
+    }
+    private fun List<Device>.newestFirst(): List<Device> =
+        sortedWith(compareByDescending<Device> { sortOrder[it.id] ?: 0L }.thenBy { it.id })
+
+    /** O que a lista mostra, na mesma ordem: sem remoções pendentes, mais recente primeiro. */
+    val snapshot: List<Device>
+        get() = visible(devices.value, pending.value).withFavorites(favorites.value).newestFirst()
     val pendingIds: Set<String> get() = pending.value.keys
     fun hasRow(id: String): Boolean = devices.value.any { it.id == id }
 
     override fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>> =
         combine(devices, favorites, pending) { list, favs, pend ->
-            visible(list, pend).withFavorites(favs).applyFilter(query, filter)
+            visible(list, pend).withFavorites(favs).newestFirst().applyFilter(query, filter)
         }
 
     override fun observeDevice(id: String): Flow<Device?> =
@@ -160,6 +169,7 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
 
     override suspend fun syncType(type: DeviceType, devices: List<Device>) {
         val pendingIds = pending.value.keys
+        devices.filterNot { it.id in pendingIds }.forEach { assignOrder(it.id) }
         this.devices.update { current ->
             // Itens com operação na fila mantêm a versão local (não "ressuscitam").
             val localPending = current.filter { it.id in pendingIds }.associateBy { it.id }
@@ -171,6 +181,7 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
     }
 
     override suspend fun upsert(device: Device) {
+        assignOrder(device.id)
         devices.update { list -> list.filterNot { it.id == device.id } + device }
     }
 

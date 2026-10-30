@@ -83,12 +83,12 @@ class DeviceDaoTest {
         dao.syncType("ALARM", listOf(alarm("2", "Central loja")))
         dao.toggleFavorite("3")
 
+        // Mais recente primeiro: "3" veio depois de "1" na resposta do servidor.
         assertEquals(
-            listOf("1", "3"),
+            listOf("3", "1"),
             dao.observeDevices("", "VIDEO", false).first().map { it.device.id },
         )
         assertEquals(listOf("3"), dao.observeDevices("", null, true).first().map { it.device.id })
-        // NOCASE só ignora caixa em ASCII: "Ce" vem antes de "Câ" (ver README, trade-offs).
         assertEquals(
             listOf("2", "3"),
             dao.observeDevices("loja", null, false).first().map { it.device.id },
@@ -234,5 +234,37 @@ class DeviceDaoTest {
     fun removerItemInexistenteRetornaFalse() = runTest {
         assertFalse(dao.enqueueDelete("nao-existe", createdAt = 1))
         assertTrue(dao.getPendingOperations().isEmpty())
+    }
+
+    @Test
+    fun listaMostraOsAdicionadosMaisRecentementePrimeiro() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B")))
+        dao.syncType("ALARM", listOf(alarm("a1", "C")))
+        assertEquals(listOf("a1", "v2", "v1"), allIds())
+
+        dao.upsert(video("v3", "Criado no app"))
+        assertEquals(listOf("v3", "a1", "v2", "v1"), allIds())
+    }
+
+    @Test
+    fun edicaoESincronizacaoNaoMudamAPosicao() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B")))
+
+        dao.upsert(video("v1", "A editado"))
+        // O servidor mudou a ordem da resposta: quem já existe não se move.
+        dao.syncType("VIDEO", listOf(video("v2", "B"), video("v1", "A editado")))
+
+        assertEquals(listOf("v2", "v1"), allIds())
+        assertEquals("A editado", dao.getDevice("v1")!!.device.name)
+    }
+
+    @Test
+    fun itemNovoVindoDoServidorEntraNoTopo() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.upsert(alarm("a1", "Criado no app"))
+
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v9", "Criado em outro aparelho")))
+
+        assertEquals(listOf("v9", "a1", "v1"), allIds())
     }
 }

@@ -56,7 +56,7 @@ class DashboardViewModelTest {
         val viewModel = createViewModel()
 
         val state = viewModel.uiState.value
-        assertEquals(listOf(alarm, camera), state.devices) // ordenado por nome
+        assertEquals(listOf(alarm, camera), state.devices) // mais recente primeiro
         assertEquals(DashboardContent.Devices, state.content)
         assertEquals(1, repository.refreshCount)
     }

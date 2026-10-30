@@ -3,6 +3,7 @@ package br.com.eduardoamaral.desafiointelbras.testutil
 import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
+import br.com.eduardoamaral.desafiointelbras.data.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralRequest
@@ -18,12 +19,17 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
+import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
 
 // ---- Fábricas de dados de teste ----
@@ -102,6 +108,12 @@ class FakeDeviceRepository : DeviceRepository {
 
     var pendingSyncResult = PendingSyncResult.DONE
     override suspend fun syncPendingOperations(): PendingSyncResult = pendingSyncResult
+
+    val pendingCount = MutableStateFlow(0)
+    override fun observePendingCount(): Flow<Int> = pendingCount
+
+    val syncEventsFlow = MutableSharedFlow<SyncEvent>(extraBufferCapacity = 8)
+    override val syncEvents: Flow<SyncEvent> = syncEventsFlow
 
     private fun result(id: String, input: DeviceInput): Outcome<Device> {
         writeError?.let { return Outcome.Failure(it) }
@@ -199,6 +211,12 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
         map { it.copy(isFavorite = it.id in favs) }
 }
 
+/** Estado da conexão controlado pelo teste. */
+class FakeNetworkMonitor(initiallyOnline: Boolean = true) : NetworkMonitor {
+    val online = MutableStateFlow(initiallyOnline)
+    override val isOnline: Flow<Boolean> = online
+}
+
 /** Conta os pedidos de envio da fila, no lugar do WorkManager. */
 class FakeSyncScheduler : SyncScheduler {
     var scheduled = 0
@@ -207,7 +225,10 @@ class FakeSyncScheduler : SyncScheduler {
     }
 }
 
-/** Simula o servidor em memória. [videoError]/[alarmError] fazem o respectivo endpoint falhar. */
+/**
+ * Simula o servidor em memória. [videoError]/[alarmError] fazem o respectivo endpoint falhar.
+ * Como a API real, recusa com 409 serial (vídeo) ou MAC (alarme) já cadastrado.
+ */
 class FakeDeviceApi : DeviceApi {
     val videos = mutableListOf<VideoDeviceDto>()
     val alarms = mutableListOf<AlarmCentralDto>()
@@ -224,6 +245,7 @@ class FakeDeviceApi : DeviceApi {
 
     override suspend fun createVideoDevice(body: VideoDeviceRequest): VideoDeviceDto {
         videoError?.let { throw it }
+        if (videos.any { it.serial == body.serial }) throw conflict()
         return VideoDeviceDto("v${nextId++}", body.name, body.serial, body.username, body.password)
             .also { videos += it }
     }
@@ -248,6 +270,7 @@ class FakeDeviceApi : DeviceApi {
 
     override suspend fun createAlarmCentral(body: AlarmCentralRequest): AlarmCentralDto {
         alarmError?.let { throw it }
+        if (alarms.any { it.macAddress == body.macAddress }) throw conflict()
         return AlarmCentralDto("a${nextId++}", body.name, body.macAddress, body.password)
             .also { alarms += it }
     }
@@ -264,6 +287,8 @@ class FakeDeviceApi : DeviceApi {
         deletedAlarmIds += id
         alarms.removeAll { it.id == id }
     }
+
+    private fun conflict() = HttpException(Response.error<Any>(409, "".toResponseBody()))
 
     companion object {
         val NETWORK_ERROR = IOException("offline")

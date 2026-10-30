@@ -45,6 +45,17 @@
     <string name="empty_filtered_message">Tente outro nome ou filtro.</string>
     <string name="error_title">Não foi possível carregar</string>
 
+    <!-- Sincronização -->
+    <string name="sync_offline">Sem conexão. Mostrando os últimos dados salvos.</string>
+    <plurals name="sync_offline_pending">
+        <item quantity="one">Sem conexão. %d alteração aguardando envio.</item>
+        <item quantity="other">Sem conexão. %d alterações aguardando envio.</item>
+    </plurals>
+    <plurals name="sync_pending">
+        <item quantity="one">Enviando %d alteração…</item>
+        <item quantity="other">Enviando %d alterações…</item>
+    </plurals>
+
     <!-- Formulário -->
     <string name="form_title_add">Novo dispositivo</string>
     <string name="form_title_edit">Editar dispositivo</string>
@@ -80,6 +91,9 @@
     <string name="msg_device_created">Dispositivo adicionado</string>
     <string name="msg_device_updated">Dispositivo atualizado</string>
     <string name="msg_device_removed">Dispositivo removido</string>
+    <string name="msg_device_removed_offline">Dispositivo removido. Será sincronizado quando houver conexão.</string>
+    <string name="msg_delete_rejected">O servidor recusou a remoção de %1$s. Ele voltou para a lista.</string>
+    <string name="error_network_write">Sem conexão. Nada foi salvo; tente de novo quando estiver online.</string>
     <string name="error_network">Sem conexão. Mostrando os últimos dados salvos.</string>
     <string name="error_timeout">O servidor demorou para responder. Tente novamente.</string>
     <string name="error_unauthorized">Acesso negado: token inválido ou ausente.</string>

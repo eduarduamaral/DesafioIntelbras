@@ -28,7 +28,7 @@ interface SyncScheduler {
  */
 @Singleton
 class WorkManagerSyncScheduler @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : SyncScheduler {
 
     override fun schedule() {

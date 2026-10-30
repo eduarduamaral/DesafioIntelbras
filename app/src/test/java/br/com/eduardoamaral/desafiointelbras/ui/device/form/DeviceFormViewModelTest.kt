@@ -1,6 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.ui.device.form
 
 import androidx.lifecycle.SavedStateHandle
+import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceField
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
@@ -10,7 +11,11 @@ import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceRepository
 import br.com.eduardoamaral.desafiointelbras.testutil.MainDispatcherRule
 import br.com.eduardoamaral.desafiointelbras.testutil.alarmDevice
 import br.com.eduardoamaral.desafiointelbras.testutil.videoDevice
+import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -20,16 +25,19 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DeviceFormViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: FakeDeviceRepository
+    private lateinit var messageBus: UserMessageBus
 
     @Before
     fun setUp() {
         repository = FakeDeviceRepository()
+        messageBus = UserMessageBus()
     }
 
     private fun createViewModel(deviceId: String? = null) = DeviceFormViewModel(
@@ -37,7 +45,7 @@ class DeviceFormViewModelTest {
             if (deviceId != null) mapOf(DeviceFormViewModel.DEVICE_ID_ARG to deviceId) else emptyMap(),
         ),
         repository = repository,
-        messageBus = UserMessageBus(),
+        messageBus = messageBus,
     )
 
     @Test
@@ -179,5 +187,22 @@ class DeviceFormViewModelTest {
         val viewModel = createViewModel(deviceId = "inexistente")
 
         assertTrue(viewModel.uiState.value.shouldClose)
+    }
+
+    @Test
+    fun `salvar sem rede avisa que nada foi salvo e mantem a tela aberta`() = runTest {
+        repository.writeError = AppError.Network
+        val messages = mutableListOf<UserMessage>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { messageBus.messages.collect { messages += it } }
+        val viewModel = createViewModel()
+        viewModel.onTypeChange(DeviceType.ALARM)
+        viewModel.onNameChange("Casa")
+        viewModel.onMacAddressChange("1A2B3C4D5E6F")
+        viewModel.onPasswordChange("1234")
+
+        viewModel.onSave()
+
+        assertEquals(UserMessage(R.string.error_network_write, isError = true), messages.single())
+        assertFalse(viewModel.uiState.value.shouldClose)
     }
 }

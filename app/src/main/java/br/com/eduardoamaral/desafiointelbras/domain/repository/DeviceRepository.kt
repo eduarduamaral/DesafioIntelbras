@@ -5,6 +5,7 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
+import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -39,6 +40,15 @@ interface DeviceRepository {
      * Chamado pelo worker em segundo plano quando há conexão.
      */
     suspend fun syncPendingOperations(): PendingSyncResult
+
+    /** Quantas alterações ainda não chegaram ao servidor. */
+    fun observePendingCount(): Flow<Int>
+
+    /**
+     * Avisos da sincronização (ex.: remoção recusada). Quem estiver observando recebe;
+     * se ninguém estiver (app fechado), o efeito continua visível na lista.
+     */
+    val syncEvents: Flow<SyncEvent>
 
     /** Apenas local: nunca vai para o servidor. */
     suspend fun toggleFavorite(id: String)

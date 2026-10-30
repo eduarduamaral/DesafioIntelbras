@@ -28,3 +28,9 @@ fun AppError.failureKind(): FailureKind = when (this) {
     AppError.NotFound -> FailureKind.ALREADY_DONE
     AppError.Conflict, is AppError.InvalidData, AppError.Unknown -> FailureKind.REJECTED
 }
+
+/** Acontecimentos da sincronização em segundo plano que o usuário precisa saber. */
+sealed interface SyncEvent {
+    /** O servidor recusou uma remoção feita offline; o dispositivo voltou para a lista. */
+    data class DeleteRejected(val deviceName: String) : SyncEvent
+}

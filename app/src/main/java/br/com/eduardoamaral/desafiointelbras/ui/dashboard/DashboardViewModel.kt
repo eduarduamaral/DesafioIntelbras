@@ -3,10 +3,12 @@ package br.com.eduardoamaral.desafiointelbras.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.eduardoamaral.desafiointelbras.R
+import br.com.eduardoamaral.desafiointelbras.data.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
+import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
@@ -28,6 +30,7 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val repository: DeviceRepository,
     private val messageBus: UserMessageBus,
+    networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
@@ -42,19 +45,34 @@ class DashboardViewModel @Inject constructor(
 
     private val totalCount: Flow<Int> = repository.observeDeviceCount()
 
-    // combine aceita até 5 fluxos tipados: lista e total vão juntos num par.
+    /**
+     * Eagerly: o valor também é lido fora da UI (mensagem da remoção). Começa em true
+     * para não piscar o aviso de "sem conexão" antes do primeiro callback do sistema.
+     */
+    private val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
+        .stateIn(viewModelScope, SharingStarted.Eagerly, initialValue = true)
+
+    // combine aceita até 5 fluxos tipados: os relacionados vão agrupados em pares.
     private val listAndTotal: Flow<Pair<List<Device>?, Int>> = combine(
         devices.onStart { emit(null) }, // null = banco ainda não respondeu
         totalCount.onStart { emit(0) },
     ) { list, total -> list to total }
 
+    private val refreshState: Flow<Pair<Boolean, AppError?>> = combine(isRefreshing, refreshError, ::Pair)
+
+    private val syncStatus: Flow<Pair<Boolean, Int>> = combine(
+        isOnline,
+        repository.observePendingCount().onStart { emit(0) },
+        ::Pair,
+    )
+
     val uiState: StateFlow<DashboardUiState> = combine(
         query,
         filter,
         listAndTotal,
-        isRefreshing,
-        refreshError,
-    ) { q, f, (list, total), refreshing, error ->
+        refreshState,
+        syncStatus,
+    ) { q, f, (list, total), (refreshing, error), (online, pending) ->
         DashboardUiState(
             query = q,
             filter = f,
@@ -63,6 +81,8 @@ class DashboardViewModel @Inject constructor(
             isLoadingLocal = list == null,
             isRefreshing = refreshing,
             error = error,
+            isOnline = online,
+            pendingCount = pending,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -72,6 +92,15 @@ class DashboardViewModel @Inject constructor(
 
     init {
         refresh()
+        viewModelScope.launch {
+            repository.syncEvents.collect { event ->
+                when (event) {
+                    is SyncEvent.DeleteRejected -> messageBus.send(
+                        UserMessage(R.string.msg_delete_rejected, isError = true, formatArgs = listOf(event.deviceName)),
+                    )
+                }
+            }
+        }
     }
 
     fun onQueryChange(value: String) {
@@ -90,7 +119,9 @@ class DashboardViewModel @Inject constructor(
                 is Outcome.Success -> refreshError.value = null
                 is Outcome.Failure -> {
                     refreshError.value = result.error
-                    messageBus.send(result.error.toUserMessage())
+                    // Sem rede o aviso fixo do cabeçalho já explica; o Snackbar seria repetido.
+                    val explainedByBanner = result.error == AppError.Network && !isOnline.value
+                    if (!explainedByBanner) messageBus.send(result.error.toUserMessage())
                 }
             }
             isRefreshing.value = false
@@ -104,7 +135,10 @@ class DashboardViewModel @Inject constructor(
     fun onDeleteDevice(id: String) {
         viewModelScope.launch {
             when (val result = repository.delete(id)) {
-                is Outcome.Success -> messageBus.send(UserMessage(R.string.msg_device_removed))
+                // Some da lista nos dois casos; offline, o texto avisa que o servidor ainda não sabe.
+                is Outcome.Success -> messageBus.send(
+                    UserMessage(if (isOnline.value) R.string.msg_device_removed else R.string.msg_device_removed_offline),
+                )
                 is Outcome.Failure ->
                     messageBus.send(result.error.toUserMessage())
             }

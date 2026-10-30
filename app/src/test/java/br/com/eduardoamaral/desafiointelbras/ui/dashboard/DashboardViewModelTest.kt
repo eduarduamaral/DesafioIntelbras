@@ -3,7 +3,9 @@ package br.com.eduardoamaral.desafiointelbras.ui.dashboard
 import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
+import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceRepository
+import br.com.eduardoamaral.desafiointelbras.testutil.FakeNetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.testutil.MainDispatcherRule
 import br.com.eduardoamaral.desafiointelbras.testutil.alarmDevice
 import br.com.eduardoamaral.desafiointelbras.testutil.networkFailure
@@ -30,6 +32,7 @@ class DashboardViewModelTest {
 
     private lateinit var repository: FakeDeviceRepository
     private lateinit var messageBus: UserMessageBus
+    private lateinit var network: FakeNetworkMonitor
 
     private val camera = videoDevice("1", "Câmera garagem")
     private val alarm = alarmDevice("2", "Central escritório", isFavorite = true)
@@ -38,11 +41,12 @@ class DashboardViewModelTest {
     fun setUp() {
         repository = FakeDeviceRepository().apply { devices.value = listOf(camera, alarm) }
         messageBus = UserMessageBus()
+        network = FakeNetworkMonitor()
     }
 
     /** Cria o ViewModel e mantém o uiState sendo coletado (WhileSubscribed precisa de um assinante). */
     private fun TestScope.createViewModel(): DashboardViewModel {
-        val viewModel = DashboardViewModel(repository, messageBus)
+        val viewModel = DashboardViewModel(repository, messageBus, network)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
         return viewModel
     }
@@ -152,5 +156,71 @@ class DashboardViewModelTest {
 
         assertEquals(listOf(alarm), viewModel.uiState.value.devices)
         assertEquals(UserMessage(R.string.msg_device_removed), messages.single())
+    }
+
+    private fun TestScope.collectMessages(): List<UserMessage> {
+        val messages = mutableListOf<UserMessage>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { messageBus.messages.collect { messages += it } }
+        return messages
+    }
+
+    @Test
+    fun `remover offline avisa que sera sincronizado depois`() = runTest {
+        val messages = collectMessages()
+        network.online.value = false
+        val viewModel = createViewModel()
+
+        viewModel.onDeleteDevice(camera.id)
+
+        assertEquals(listOf(alarm), viewModel.uiState.value.devices)
+        assertEquals(UserMessage(R.string.msg_device_removed_offline), messages.single())
+    }
+
+    @Test
+    fun `offline com fila mostra o aviso com a quantidade pendente`() = runTest {
+        val viewModel = createViewModel()
+
+        network.online.value = false
+        repository.pendingCount.value = 2
+
+        assertEquals(SyncBanner.OfflineWithPending(2), viewModel.uiState.value.syncBanner)
+    }
+
+    @Test
+    fun `quando a conexao volta o aviso passa a enviando e some ao esvaziar a fila`() = runTest {
+        network.online.value = false
+        repository.pendingCount.value = 1
+        val viewModel = createViewModel()
+
+        network.online.value = true
+        assertEquals(SyncBanner.Syncing(1), viewModel.uiState.value.syncBanner)
+
+        repository.pendingCount.value = 0
+        assertEquals(null, viewModel.uiState.value.syncBanner)
+    }
+
+    @Test
+    fun `remocao recusada pelo servidor vira snackbar com o nome`() = runTest {
+        val messages = collectMessages()
+        createViewModel()
+
+        repository.syncEventsFlow.emit(SyncEvent.DeleteRejected("Câmera garagem"))
+
+        assertEquals(
+            UserMessage(R.string.msg_delete_rejected, isError = true, formatArgs = listOf("Câmera garagem")),
+            messages.single(),
+        )
+    }
+
+    @Test
+    fun `erro de rede no refresh offline nao repete o aviso do cabecalho`() = runTest {
+        val messages = collectMessages()
+        network.online.value = false
+        repository.refreshResult = networkFailure
+
+        val viewModel = createViewModel()
+
+        assertTrue(messages.isEmpty())
+        assertEquals(SyncBanner.Offline, viewModel.uiState.value.syncBanner)
     }
 }

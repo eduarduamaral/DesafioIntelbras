@@ -56,6 +56,7 @@ import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceActio
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceFilterChips
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceRow
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceSearchField
+import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.SyncStatusBanner
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.itemPosition
 import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
 
@@ -116,6 +117,7 @@ fun DashboardScreen(
         ) {
             DashboardHeader(
                 totalCount = state.totalCount,
+                syncBanner = state.syncBanner,
                 query = state.query,
                 filter = state.filter,
                 onQueryChange = onQueryChange,
@@ -203,6 +205,7 @@ fun DashboardScreen(
 @Composable
 private fun DashboardHeader(
     totalCount: Int,
+    syncBanner: SyncBanner?,
     query: String,
     filter: DeviceFilter,
     onQueryChange: (String) -> Unit,
@@ -224,6 +227,7 @@ private fun DashboardHeader(
                 style = MaterialTheme.typography.bodySmall,
             )
         }
+        SyncStatusBanner(banner = syncBanner)
         DeviceSearchField(query = query, onQueryChange = onQueryChange)
         DeviceFilterChips(
             selected = filter,

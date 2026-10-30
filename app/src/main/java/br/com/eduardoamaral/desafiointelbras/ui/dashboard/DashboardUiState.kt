@@ -13,6 +13,9 @@ data class DashboardUiState(
     val isLoadingLocal: Boolean = true,
     val isRefreshing: Boolean = false,
     val error: AppError? = null,
+    val isOnline: Boolean = true,
+    /** Alterações feitas offline que ainda não chegaram ao servidor. */
+    val pendingCount: Int = 0,
 ) {
     private val isFiltering: Boolean get() = query.isNotBlank() || filter != DeviceFilter.ALL
 
@@ -27,6 +30,21 @@ data class DashboardUiState(
             error != null && !isFiltering -> DashboardContent.Error(error)
             else -> DashboardContent.Empty(isFiltered = isFiltering)
         }
+
+    /** Aviso fixo do cabeçalho. null = online e sem nada na fila. */
+    val syncBanner: SyncBanner?
+        get() = when {
+            !isOnline && pendingCount > 0 -> SyncBanner.OfflineWithPending(pendingCount)
+            !isOnline -> SyncBanner.Offline
+            pendingCount > 0 -> SyncBanner.Syncing(pendingCount)
+            else -> null
+        }
+}
+
+sealed interface SyncBanner {
+    data object Offline : SyncBanner
+    data class OfflineWithPending(val count: Int) : SyncBanner
+    data class Syncing(val count: Int) : SyncBanner
 }
 
 sealed interface DashboardContent {

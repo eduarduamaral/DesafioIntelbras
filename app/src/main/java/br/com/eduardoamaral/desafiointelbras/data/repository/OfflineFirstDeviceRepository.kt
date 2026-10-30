@@ -13,11 +13,14 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.FailureKind
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
+import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import br.com.eduardoamaral.desafiointelbras.domain.model.failureKind
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
@@ -44,6 +47,12 @@ class OfflineFirstDeviceRepository @Inject constructor(
 ) : DeviceRepository {
 
     private val mutex = Mutex()
+
+    // Buffer: o worker não fica esperando a UI consumir o aviso.
+    private val _syncEvents = MutableSharedFlow<SyncEvent>(extraBufferCapacity = 8)
+    override val syncEvents: Flow<SyncEvent> = _syncEvents.asSharedFlow()
+
+    override fun observePendingCount(): Flow<Int> = local.observePendingCount()
 
     override fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>> =
         local.observeDevices(query.trim(), filter)
@@ -75,7 +84,13 @@ class OfflineFirstDeviceRepository @Inject constructor(
         }
     }
 
+    /**
+     * Antes de criar, envia a fila. Caso real: remover offline e recriar com o mesmo
+     * serial/MAC. Se a remoção ainda não tivesse chegado, o servidor responderia 409
+     * (serial/MAC já existe). Sem rede, o envio falha rápido e a criação falha igual.
+     */
     override suspend fun create(input: DeviceInput): Outcome<Device> = mutex.withLock {
+        sendPendingOperations()
         remote.create(input).alsoSaveLocally()
     }
 
@@ -132,6 +147,7 @@ class OfflineFirstDeviceRepository @Inject constructor(
             }
             FailureKind.REJECTED -> { // recusado de vez: o item volta para a lista
                 local.rollbackDelete(id)
+                local.getDevice(id)?.let { _syncEvents.tryEmit(SyncEvent.DeleteRejected(it.name)) }
                 null
             }
             FailureKind.TRANSIENT -> {

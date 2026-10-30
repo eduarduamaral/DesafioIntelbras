@@ -152,7 +152,13 @@ class DeviceFormViewModel @Inject constructor(
                     _uiState.update { it.copy(isSaving = false, shouldClose = true) }
                 }
                 is Outcome.Failure -> {
-                    messageBus.send(result.error.toUserMessage())
+                    // Criar e editar ainda dependem do servidor: deixa claro que nada foi salvo.
+                    val message = if (result.error == AppError.Network) {
+                        UserMessage(R.string.error_network_write, isError = true)
+                    } else {
+                        result.error.toUserMessage()
+                    }
+                    messageBus.send(message)
                     _uiState.update {
                         it.copy(isSaving = false, errors = it.errors + conflictFieldError(input, result.error))
                     }

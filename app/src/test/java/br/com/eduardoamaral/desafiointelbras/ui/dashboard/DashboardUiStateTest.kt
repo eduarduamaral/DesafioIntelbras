@@ -42,4 +42,12 @@ class DashboardUiStateTest {
         )
         assertEquals(DashboardContent.Empty(isFiltered = true), state.content)
     }
+
+    @Test
+    fun `aviso de sincronizacao segue conexao e fila`() {
+        assertEquals(null, DashboardUiState(isOnline = true, pendingCount = 0).syncBanner)
+        assertEquals(SyncBanner.Syncing(3), DashboardUiState(isOnline = true, pendingCount = 3).syncBanner)
+        assertEquals(SyncBanner.Offline, DashboardUiState(isOnline = false, pendingCount = 0).syncBanner)
+        assertEquals(SyncBanner.OfflineWithPending(1), DashboardUiState(isOnline = false, pendingCount = 1).syncBanner)
+    }
 }

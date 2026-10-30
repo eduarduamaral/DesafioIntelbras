@@ -9,9 +9,14 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
+import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceApi
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeSyncScheduler
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -22,6 +27,7 @@ import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstDeviceRepositoryTest {
 
     private lateinit var api: FakeDeviceApi
@@ -270,5 +276,55 @@ class OfflineFirstDeviceRepositoryTest {
         assertEquals(listOf("v1"), api.deletedVideoIds)
         assertTrue(local.snapshot.isEmpty())
         assertFalse(local.hasRow("v1"))
+    }
+
+    @Test
+    fun `remocao recusada avisa com o nome do dispositivo`() = runTest {
+        val events = mutableListOf<SyncEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.syncEvents.collect { events += it } }
+        api.videos += camera
+        repository.refresh()
+        repository.delete("v1")
+        api.videoError = httpError(400)
+
+        repository.syncPendingOperations()
+
+        assertEquals(listOf(SyncEvent.DeleteRejected("Câmera")), events)
+    }
+
+    @Test
+    fun `contagem de pendencias acompanha a fila`() = runTest {
+        api.videos += camera
+        repository.refresh()
+
+        repository.delete("v1")
+        assertEquals(1, repository.observePendingCount().first())
+
+        repository.syncPendingOperations()
+        assertEquals(0, repository.observePendingCount().first())
+    }
+
+    @Test
+    fun `create envia remocoes pendentes antes e recriar com o mesmo serial funciona`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.delete("v1") // removido offline; o servidor ainda tem o serial ABC123
+
+        api.videoError = null // a conexão voltou
+        val input = DeviceInput.Video(name = "Câmera nova", serial = "ABC123", username = "admin", password = "1234")
+        val result = repository.create(input)
+
+        assertTrue(result is Outcome.Success)
+        assertEquals(listOf("v1"), api.deletedVideoIds) // a remoção foi antes
+        assertEquals(listOf("Câmera nova"), local.snapshot.map { it.name })
+    }
+
+    @Test
+    fun `sem enviar a fila o servidor recusaria o serial duplicado`() = runTest {
+        api.videos += camera
+        val input = DeviceInput.Video(name = "Outra", serial = "ABC123", username = "admin", password = "1234")
+
+        assertEquals(Outcome.Failure(AppError.Conflict), repository.create(input))
     }
 }

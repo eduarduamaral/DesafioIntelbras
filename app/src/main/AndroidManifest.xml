@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Para o NetworkMonitor saber se há internet (aviso de offline e fila de pendências). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- A API usa HTTP puro; liberamos cleartext apenas para o host dela (ver network_security_config). -->
     <application

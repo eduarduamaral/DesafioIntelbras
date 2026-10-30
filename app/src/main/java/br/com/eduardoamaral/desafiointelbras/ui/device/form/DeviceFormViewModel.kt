@@ -104,16 +104,17 @@ class DeviceFormViewModel @Inject constructor(
     }
 
     fun onNameChange(value: String) = updateField(DeviceField.NAME) { copy(name = value) }
-    // O campo não deixa passar do limite do servidor: o usuário vê o contador parar em 13.
     fun onSerialChange(value: String) = updateField(DeviceField.SERIAL) {
-        copy(serial = value.take(DeviceValidator.SERIAL_MAX_LENGTH))
+        copy(serial = DeviceValidator.sanitizeSerialInput(value))
     }
     fun onUsernameChange(value: String) = updateField(DeviceField.USERNAME) { copy(username = value) }
-    fun onPasswordChange(value: String) = updateField(DeviceField.PASSWORD) { copy(password = value) }
+    // A senha do alarme só aceita dígitos; a da câmera é livre.
+    fun onPasswordChange(value: String) = updateField(DeviceField.PASSWORD) {
+        copy(password = if (type == DeviceType.ALARM) DeviceValidator.sanitizeAlarmPasswordInput(value) else value)
+    }
 
     fun onMacAddressChange(value: String) = updateField(DeviceField.MAC_ADDRESS) {
-        // Normaliza enquanto digita: só hexadecimal, maiúsculo, no máximo 12 caracteres.
-        copy(macAddress = DeviceValidator.normalizeMac(value).filter { it in HEX }.take(MAC_LENGTH))
+        copy(macAddress = DeviceValidator.sanitizeMacInput(value))
     }
 
     /** Altera um campo e limpa o erro dele (o usuário já está corrigindo). */
@@ -183,7 +184,5 @@ class DeviceFormViewModel @Inject constructor(
 
     companion object {
         const val DEVICE_ID_ARG = "deviceId"
-        const val MAC_LENGTH = 12
-        private const val HEX = "0123456789ABCDEF"
     }
 }

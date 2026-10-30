@@ -276,14 +276,14 @@ private fun AlarmFields(state: DeviceFormUiState, actions: DeviceFormActions) {
         supportingText = stringResource(
             R.string.form_mac_hint_counter,
             state.macAddress.length,
-            DeviceFormViewModel.MAC_LENGTH,
+            DeviceValidator.MAC_LENGTH,
         ),
         enabled = !state.isSaving,
         capitalization = KeyboardCapitalization.Characters,
     )
     PasswordTextField(
         value = state.password,
-        onValueChange = { value -> actions.onPasswordChange(value.filter(Char::isDigit).take(6)) },
+        onValueChange = actions.onPasswordChange,
         label = stringResource(R.string.form_password_label),
         error = state.errorText(DeviceField.PASSWORD),
         supportingText = stringResource(R.string.form_alarm_password_hint),

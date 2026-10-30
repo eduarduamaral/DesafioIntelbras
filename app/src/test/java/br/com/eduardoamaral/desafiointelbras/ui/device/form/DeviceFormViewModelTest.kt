@@ -95,6 +95,25 @@ class DeviceFormViewModelTest {
     }
 
     @Test
+    fun `senha do alarme aceita so digitos e no maximo 6`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onTypeChange(DeviceType.ALARM)
+
+        viewModel.onPasswordChange("12ab3456789")
+
+        assertEquals("123456", viewModel.uiState.value.password)
+    }
+
+    @Test
+    fun `senha da camera nao e filtrada`() = runTest {
+        val viewModel = createViewModel() // abre com Vídeo
+
+        viewModel.onPasswordChange("Senh@ forte 123")
+
+        assertEquals("Senh@ forte 123", viewModel.uiState.value.password)
+    }
+
+    @Test
     fun `adicionar alarme valido cria e fecha a tela`() = runTest {
         val viewModel = createViewModel()
         viewModel.onTypeChange(DeviceType.ALARM)

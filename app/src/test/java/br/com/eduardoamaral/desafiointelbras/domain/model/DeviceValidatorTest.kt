@@ -66,6 +66,33 @@ class DeviceValidatorTest {
     }
 
     @Test
+    fun `entrada do serial e cortada em 13`() {
+        assertEquals("ABCDEF1234567", DeviceValidator.sanitizeSerialInput("ABCDEF1234567890"))
+        assertEquals("ABC", DeviceValidator.sanitizeSerialInput("ABC"))
+    }
+
+    @Test
+    fun `entrada do MAC aceita so hexadecimal maiusculo e no maximo 12`() {
+        assertEquals("1A2B3C4D5E6F", DeviceValidator.sanitizeMacInput("1a:2b:3c:4d:5e:6f:99"))
+        assertEquals("ABCDEF", DeviceValidator.sanitizeMacInput("ab-cd-ef-gh"))
+        assertEquals("", DeviceValidator.sanitizeMacInput("xyz"))
+    }
+
+    @Test
+    fun `entrada da senha do alarme aceita so digitos e no maximo 6`() {
+        assertEquals("123456", DeviceValidator.sanitizeAlarmPasswordInput("12a34b5678"))
+        assertEquals("", DeviceValidator.sanitizeAlarmPasswordInput("abc"))
+    }
+
+    @Test
+    fun `entrada saneada sempre passa na validacao de formato quando completa`() {
+        val mac = DeviceValidator.sanitizeMacInput("aa:bb:cc:dd:ee:ff")
+        assertNull(DeviceValidator.validateMac(mac))
+        val password = DeviceValidator.sanitizeAlarmPasswordInput("1-2-3-4")
+        assertNull(DeviceValidator.validateAlarmPassword(password))
+    }
+
+    @Test
     fun `nome acima do limite`() {
         val name = "a".repeat(DeviceValidator.NAME_MAX_LENGTH + 1)
         assertEquals(ValidationError.TOO_LONG, DeviceValidator.validateName(name))

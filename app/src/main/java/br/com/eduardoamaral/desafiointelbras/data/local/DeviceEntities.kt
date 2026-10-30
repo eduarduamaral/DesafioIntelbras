@@ -1,6 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.data.local
 
 import androidx.room.ColumnInfo
+import androidx.room.DatabaseView
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -46,8 +47,27 @@ data class FavoriteEntity(
     @PrimaryKey @ColumnInfo(name = "device_id") val deviceId: String,
 )
 
-/** Resultado do JOIN devices + favorites. */
+/**
+ * View do banco com cada dispositivo e se ele é favorito.
+ *
+ * A regra "é favorito = existe linha em favorites" fica definida só aqui; as queries do
+ * DAO leem desta view e só acrescentam o WHERE. O Room sabe que a view lê devices e
+ * favorites, então os Flow continuam emitindo quando qualquer uma das duas muda.
+ * O SQLite expande a view dentro da query: o plano de execução é o mesmo do JOIN direto.
+ */
+@DatabaseView(
+    viewName = DeviceWithFavorite.VIEW_NAME,
+    value = """
+        SELECT d.*, (f.device_id IS NOT NULL) AS is_favorite
+        FROM devices d
+        LEFT JOIN favorites f ON f.device_id = d.id
+    """,
+)
 data class DeviceWithFavorite(
     @Embedded val device: DeviceEntity,
     @ColumnInfo(name = "is_favorite") val isFavorite: Boolean,
-)
+) {
+    companion object {
+        const val VIEW_NAME = "device_with_favorite"
+    }
+}

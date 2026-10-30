@@ -11,19 +11,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class DeviceDao {
 
+    // As leituras vêm da view device_with_favorite (ver DeviceWithFavorite), que já
+    // junta devices + favorites. Aqui fica só o que muda em cada consulta.
+
     /**
-     * Busca + filtros feitos no SQLite. Como a query lê as duas tabelas, o Flow
+     * Busca + filtros feitos no SQLite. Como a view lê as duas tabelas, o Flow
      * emite de novo quando muda um dispositivo OU um favorito.
      */
     @Query(
         """
-        SELECT d.*, (f.device_id IS NOT NULL) AS is_favorite
-        FROM devices d
-        LEFT JOIN favorites f ON f.device_id = d.id
-        WHERE d.name LIKE '%' || :query || '%' ESCAPE '\'
-          AND (:type IS NULL OR d.type = :type)
-          AND (:onlyFavorites = 0 OR f.device_id IS NOT NULL)
-        ORDER BY d.name COLLATE NOCASE
+        SELECT * FROM device_with_favorite
+        WHERE name LIKE '%' || :query || '%' ESCAPE '\'
+          AND (:type IS NULL OR type = :type)
+          AND (:onlyFavorites = 0 OR is_favorite = 1)
+        ORDER BY name COLLATE NOCASE
         """,
     )
     abstract fun observeDevices(
@@ -32,24 +33,10 @@ abstract class DeviceDao {
         onlyFavorites: Boolean,
     ): Flow<List<DeviceWithFavorite>>
 
-    @Query(
-        """
-        SELECT d.*, (f.device_id IS NOT NULL) AS is_favorite
-        FROM devices d
-        LEFT JOIN favorites f ON f.device_id = d.id
-        WHERE d.id = :id
-        """,
-    )
+    @Query("SELECT * FROM device_with_favorite WHERE id = :id")
     abstract fun observeDevice(id: String): Flow<DeviceWithFavorite?>
 
-    @Query(
-        """
-        SELECT d.*, (f.device_id IS NOT NULL) AS is_favorite
-        FROM devices d
-        LEFT JOIN favorites f ON f.device_id = d.id
-        WHERE d.id = :id
-        """,
-    )
+    @Query("SELECT * FROM device_with_favorite WHERE id = :id")
     abstract suspend fun getDevice(id: String): DeviceWithFavorite?
 
     @Query("SELECT COUNT(*) FROM devices WHERE type IN ('VIDEO', 'ALARM')")

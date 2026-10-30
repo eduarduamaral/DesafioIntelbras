@@ -72,9 +72,11 @@ Favoritos ficam numa **tabela própria** (`favorites`), separada de `devices`:
 1. A sincronização só escreve em `devices`; nunca toca em `favorites`.
 2. A sincronização usa **`@Upsert`** (INSERT ou UPDATE), e não `OnConflictStrategy.REPLACE`. O `REPLACE` faz DELETE + INSERT, e esse DELETE dispararia o `ON DELETE CASCADE` e apagaria o favorito.
 3. O `CASCADE` existe para o caso legítimo: se o dispositivo foi removido (no app ou no servidor), o favorito órfão vai junto.
-4. A leitura faz `LEFT JOIN` e devolve `isFavorite`. Como a query observa as duas tabelas, marcar ou desmarcar atualiza a UI na hora.
+4. A leitura vem da **view `device_with_favorite`** (`@DatabaseView`), que faz o `LEFT JOIN` e devolve `is_favorite`. A regra "é favorito" fica definida num lugar só, e as queries do DAO só acrescentam o `WHERE`. Como a view lê as duas tabelas, marcar ou desmarcar atualiza a UI na hora.
 
 Isso está coberto por `DeviceDaoTest` (SQLite real em memória) e `OfflineFirstDeviceRepositoryTest`.
+
+**Migração do banco:** a view entrou na versão 2 do banco. A migração 1 → 2 é uma `AutoMigration` do Room (gera o `CREATE VIEW` sem tocar nos dados), possível porque os esquemas são exportados em `app/schemas`. O `AppDatabaseMigrationTest` cria o banco como era na versão 1, com um favorito, migra e confere que dispositivos e favoritos continuam lá: quem já tem o app instalado não perde nada ao atualizar.
 
 ### Concorrência
 

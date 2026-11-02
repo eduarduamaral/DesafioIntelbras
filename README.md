@@ -2,8 +2,6 @@
 
 App Android nativo (Kotlin + Jetpack Compose) para listar, consultar, adicionar, editar, remover e favoritar dispositivos de vídeo e alarme, integrado à API do desafio. É **offline-first**: o banco local (Room) é a fonte única de verdade.
 
-> 🚧 Em desenvolvimento.
-
 ## API
 
 Contrato em `http://squadapps.ddns-intelbras.com.br:37025/api` (OpenAPI em `/api-json`). Autenticação com `Authorization: Bearer <token>`.
@@ -187,7 +185,7 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 - **Busca e filtros no SQLite**: a filtragem vive numa query só. Trade-off: o `LIKE` do SQLite só ignora caixa em ASCII ("câmera" ≠ "CÂMERA"). Melhoria possível: uma coluna normalizada (sem acento, minúscula) para busca.
 - **Validação no app espelhando a API** (`DeviceValidator`): feedback imediato por campo, sem ida ao servidor para erros óbvios. O MAC é normalizado enquanto o usuário digita (aceita `1a:2b:...`).
 - **Tipo não muda na edição**: vídeo e alarme são recursos diferentes no servidor; trocar exigiria apagar e recriar.
-- **Senhas dos dispositivos ficam no Room em texto puro**, porque a API as devolve assim e a tela de informações as mostra. Na UI aparecem ocultas com botão para revelar. Melhoria: criptografar o banco (SQLCipher) ou guardar só no Keystore.
+- **Senhas dos dispositivos ficam no Room em texto puro**, porque a API as devolve assim. Na UI aparecem ocultas com botão para revelar, e o banco fica **fora do backup do Android** (`backup_rules.xml` e `data_extraction_rules.xml`), para as senhas não irem para a nuvem nem para outro aparelho. Trade-off: os favoritos não voltam ao reinstalar. Melhoria: criptografar o banco (SQLCipher) ou guardar só no Keystore.
 - **Exclusão com 404 conta como sucesso**: o estado desejado (item não existe) foi alcançado. Isso torna o reenvio da fila idempotente.
 - **Cleartext HTTP** liberado só para o host da API (`network_security_config.xml`).
 - **Foco verde no campo de busca (desvio do guia)**: no Figma a busca focada só ganha borda cinza, o que deixa o foco quase invisível (pouco contraste, ruim para acessibilidade). Usei o mesmo verde (`#00B26B`) dos campos do formulário para o feedback ser claro e consistente no app inteiro. A lupa também fica verde no foco, seguindo a regra de "ícone ativo" da Iconografia do guia.

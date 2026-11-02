@@ -117,7 +117,6 @@ internal fun VideoFields(state: DeviceFormUiState, actions: DeviceFormActions) {
         onValueChange = actions.onPasswordChange,
         label = stringResource(R.string.form_password_label),
         error = state.errorText(DeviceField.PASSWORD),
-        supportingText = stringResource(R.string.form_alarm_password_hint),
         enabled = !state.isSaving,
     )
 }

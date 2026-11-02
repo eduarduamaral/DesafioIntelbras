@@ -281,7 +281,9 @@ class OfflineFirstDeviceRepositoryTest {
     @Test
     fun `remocao recusada avisa com o nome do dispositivo`() = runTest {
         val events = mutableListOf<SyncEvent>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.syncEvents.collect { events += it } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.syncEvents.collect { events += it }
+        }
         api.videos += camera
         repository.refresh()
         repository.delete("v1")

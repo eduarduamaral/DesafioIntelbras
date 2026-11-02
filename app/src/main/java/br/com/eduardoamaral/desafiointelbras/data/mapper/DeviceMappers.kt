@@ -64,17 +64,17 @@ fun Device.toEntity(): DeviceEntity = when (val d = details) {
 
 /** Retorna null se a linha estiver inconsistente (tipo desconhecido ou coluna obrigatória nula). */
 fun DeviceWithFavorite.toDomain(): Device? {
-    val details = when (device.type) {
-        DeviceType.VIDEO.name -> DeviceDetails.Video(
-            serial = device.serial ?: return null,
-            username = device.username ?: return null,
-            password = device.password,
-        )
-        DeviceType.ALARM.name -> DeviceDetails.Alarm(
-            macAddress = device.macAddress ?: return null,
-            password = device.password,
-        )
-        else -> return null
-    }
+    val details = device.toDetails() ?: return null
     return Device(id = device.id, name = device.name, details = details, isFavorite = isFavorite)
+}
+
+private fun DeviceEntity.toDetails(): DeviceDetails? = when (type) {
+    DeviceType.VIDEO.name ->
+        if (serial != null && username != null) {
+            DeviceDetails.Video(serial = serial, username = username, password = password)
+        } else {
+            null
+        }
+    DeviceType.ALARM.name -> macAddress?.let { DeviceDetails.Alarm(macAddress = it, password = password) }
+    else -> null
 }

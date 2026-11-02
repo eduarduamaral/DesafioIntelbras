@@ -1,0 +1,45 @@
+# Só o que difere do padrão do detekt (buildUponDefaultConfig = true no build).
+# Para ver todas as regras e valores padrão: ./gradlew detektGenerateConfig
+
+naming:
+  FunctionNaming:
+    # Funções @Composable usam PascalCase, convenção oficial do Compose.
+    ignoreAnnotated: ['Composable']
+
+complexity:
+  LongParameterList:
+    # Composables recebem estado + callbacks por parâmetro (state hoisting); parâmetros
+    # com valor padrão (modifier, cores...) são opcionais e não pesam para quem chama.
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    # Um Composable de tela é uma árvore de UI declarativa; o tamanho não indica lógica.
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    # Um DAO do Room é um catálogo de consultas: muitas funções pequenas é o esperado.
+    ignoreAnnotated: ['Dao']
+    allowedFunctionsPerClass: 15
+    allowedFunctionsPerInterface: 15
+
+style:
+  MagicNumber:
+    # Medidas de layout (16.dp, 0.5f) são valores de design, não números mágicos.
+    ignoreAnnotated: ['Composable', 'Preview']
+  UnusedPrivateFunction:
+    # @Preview privada é usada pelo Android Studio, não pelo código.
+    allowedNames: '.*Preview'
+  ReturnCount:
+    # Retorno antecipado no começo da função (guard clause) deixa o código mais plano.
+    excludeGuardClauses: true
+
+ktlint:
+  # Estas regras juntam numa linha só toda assinatura que couber, inclusive as escritas
+  # uma por linha com vírgula no final (estilo oficial do Kotlin, que gera diffs menores).
+  # O formatador do Android Studio não faz isso, então elas brigariam com o IDE.
+  ClassSignature:
+    active: false
+  FunctionSignature:
+    active: false
+  # Puramente estético; o padrão do formatador do IDE não insere essas linhas.
+  BlankLineBetweenWhenConditions:
+    active: false

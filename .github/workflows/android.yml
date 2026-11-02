@@ -25,6 +25,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Static analysis (detekt + Android Lint)
+        run: ./gradlew detekt lintDebug
+        env:
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
         env:
@@ -34,3 +39,12 @@ jobs:
         run: ./gradlew assembleDebug
         env:
           API_TOKEN: ${{ secrets.API_TOKEN }}
+
+      - name: Upload lint reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: |
+            app/build/reports/detekt/
+            app/build/reports/lint-results-debug.html

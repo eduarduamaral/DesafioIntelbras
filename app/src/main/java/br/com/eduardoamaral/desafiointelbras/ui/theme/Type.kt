@@ -30,17 +30,67 @@ val Typography = Typography(
     headlineLarge = default.headlineLarge.openSans(FontWeight.SemiBold),
     headlineMedium = default.headlineMedium.openSans(FontWeight.SemiBold),
     // "Meus dispositivos"
-    headlineSmall = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
+    headlineSmall = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+    ),
     // Títulos das barras: "Novo dispositivo", "Informações"
-    titleLarge = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
+    titleLarge = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+    ),
     // Nome do dispositivo na lista e nos cards
-    titleMedium = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
-    titleSmall = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
-    bodyMedium = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
+    titleMedium = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+    ),
+    titleSmall = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
     // Subtítulos: "3 dispositivos", serial/MAC na lista
-    bodySmall = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
-    labelLarge = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
-    labelSmall = TextStyle(fontFamily = OpenSans, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 16.sp),
+    bodySmall = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+    ),
+    labelLarge = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = OpenSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+    ),
 )

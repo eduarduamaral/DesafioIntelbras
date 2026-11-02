@@ -3,7 +3,6 @@ package br.com.eduardoamaral.desafiointelbras.ui.device.form
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.eduardoamaral.desafiointelbras.ui.navigation.DEVICE_ID_ARG
 import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
@@ -17,6 +16,7 @@ import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
 import br.com.eduardoamaral.desafiointelbras.ui.common.toUserMessage
+import br.com.eduardoamaral.desafiointelbras.ui.navigation.DEVICE_ID_ARG
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -109,6 +109,7 @@ class DeviceFormViewModel @Inject constructor(
         copy(serial = DeviceValidator.sanitizeSerialInput(value))
     }
     fun onUsernameChange(value: String) = updateField(DeviceField.USERNAME) { copy(username = value) }
+
     // A senha do alarme só aceita dígitos; a da câmera é livre.
     fun onPasswordChange(value: String) = updateField(DeviceField.PASSWORD) {
         copy(password = if (type == DeviceType.ALARM) DeviceValidator.sanitizeAlarmPasswordInput(value) else value)
@@ -126,17 +127,7 @@ class DeviceFormViewModel @Inject constructor(
     fun onSave() {
         val current = _uiState.value
         if (current.isSaving) return
-
-        val input = current.toInput()
-        if (input == null) {
-            _uiState.update { it.copy(errors = it.errors + (DeviceField.TYPE to ValidationError.REQUIRED)) }
-            return
-        }
-        val errors = DeviceValidator.validate(input)
-        if (errors.isNotEmpty()) {
-            _uiState.update { it.copy(errors = errors) }
-            return
-        }
+        val input = validInputOrShowErrors(current) ?: return
 
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
@@ -166,6 +157,18 @@ class DeviceFormViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** Devolve o que será enviado, ou null depois de marcar na tela os campos com erro. */
+    private fun validInputOrShowErrors(state: DeviceFormUiState): DeviceInput? {
+        val input = state.toInput()
+        val errors = if (input == null) {
+            state.errors + (DeviceField.TYPE to ValidationError.REQUIRED)
+        } else {
+            DeviceValidator.validate(input)
+        }
+        if (errors.isNotEmpty()) _uiState.update { it.copy(errors = errors) }
+        return input?.takeIf { errors.isEmpty() }
     }
 
     /** 409 significa serial (vídeo) ou MAC (alarme) duplicado: marcamos o campo culpado. */

@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Desafio Intelbras</string>
 
     <!-- Comuns -->
@@ -70,10 +70,10 @@
     <string name="form_mac_label">MAC Address</string>
     <string name="form_mac_hint_counter">Ex.: 1A:2B:3C:4D:5E:6F · %1$d/%2$d</string>
     <string name="form_serial_number_hint_counter">Ex.: 1A2B3C4D5E6F9 · %1$d/%2$d</string>
-    <string name="form_char_counter">%1$d/%2$d</string>
     <string name="form_alarm_password_hint">4 ou 6 dígitos numéricos</string>
     <string name="form_error_required">Campo obrigatório</string>
-    <string name="form_error_too_long">Máximo de %1$d caracteres</string>
+    <!-- O limite é sempre maior que 1 (13 ou 50), então não precisa de plural. -->
+    <string name="form_error_too_long" tools:ignore="PluralsCandidate">Máximo de %1$d caracteres</string>
     <string name="form_error_invalid_mac">MAC inválido: use 12 caracteres hexadecimais</string>
     <string name="form_error_invalid_alarm_password">A senha deve ter 4 ou 6 dígitos</string>
     <string name="form_error_already_exists">Já cadastrado em outro dispositivo</string>

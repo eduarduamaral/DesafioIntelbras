@@ -152,7 +152,10 @@ internal fun AlarmFields(state: DeviceFormUiState, actions: DeviceFormActions) {
 internal fun DeviceFormUiState.errorText(field: DeviceField): String? {
     val error = errors[field] ?: return null
     return if (error == ValidationError.TOO_LONG) {
-        val max = if (field == DeviceField.SERIAL) DeviceValidator.SERIAL_MAX_LENGTH else DeviceValidator.NAME_MAX_LENGTH
+        val max = when (field) {
+            DeviceField.SERIAL -> DeviceValidator.SERIAL_MAX_LENGTH
+            else -> DeviceValidator.NAME_MAX_LENGTH
+        }
         stringResource(error.messageRes(), max)
     } else {
         stringResource(error.messageRes())

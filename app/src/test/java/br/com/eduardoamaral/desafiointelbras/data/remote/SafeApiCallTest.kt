@@ -17,7 +17,9 @@ class SafeApiCallTest {
 
     @Test
     fun `400 traz a lista de mensagens do servidor`() = runTest {
-        val body = """{"statusCode":400,"error":"Bad Request","message":["serial must be uppercase","password too short"]}"""
+        val body = """
+            {"statusCode":400,"error":"Bad Request","message":["serial must be uppercase","password too short"]}
+        """.trimIndent()
 
         val result = safeApiCall { throw HttpException(Response.error<Any>(400, body.toResponseBody())) }
 

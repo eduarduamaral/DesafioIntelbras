@@ -36,6 +36,15 @@ Testes:
 ./gradlew connectedDebugAndroidTest  # Room com SQLite real: DAO, fila e migrações (precisa de emulador/dispositivo)
 ```
 
+Análise estática (também roda no CI):
+
+```bash
+./gradlew detekt lintDebug
+```
+
+- **detekt** (com as regras do ktlint): estilo, formatação e complexidade. `config/detekt/detekt.yml` guarda só o que difere do padrão, cada ajuste com o motivo (a maioria é para Compose).
+- **Android Lint**: erro quebra o build; avisos de "versão mais nova disponível" ficam desligados, porque atualizar dependências é feito à parte.
+
 ## Arquitetura
 
 MVVM com camadas separadas e fluxo de dados unidirecional:
@@ -170,6 +179,7 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 | Coroutines/Flow | Assincronismo (requisito) |
 | WorkManager + `hilt-work` | Envio da fila offline com restrição de rede, backoff e sobrevivência a reinícios |
 | JUnit + kotlinx-coroutines-test | Testes de ViewModel e repositório com fakes |
+| detekt 2 (+ ktlint) e Android Lint | Análise estática local e no CI. O detekt 2 ainda é alpha, mas é a primeira linha compatível com AGP 9 (Kotlin embutido) e Gradle 9 |
 
 ## Decisões técnicas e trade-offs
 
@@ -189,6 +199,6 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 - [ ] Criar e editar offline (id temporário e resolução de conflitos)
 - [ ] Sugestões para a API: `createdAt` (ordem real) e favoritos por usuário (sincronizar entre aparelhos)
 - [ ] Testes de UI com Compose UI Test
-- [ ] ktlint/detekt no CI
+- [x] detekt (com ktlint) e Android Lint no CI
 - [ ] Modularização
 - [ ] KMP na camada de domínio/dados (Room KMP + Ktor)

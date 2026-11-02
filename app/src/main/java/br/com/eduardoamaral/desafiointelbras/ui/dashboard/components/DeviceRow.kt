@@ -41,23 +41,6 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
 import br.com.eduardoamaral.desafiointelbras.ui.components.DeviceTypeIcon
 import br.com.eduardoamaral.desafiointelbras.ui.components.formatMac
 
-/** Posição do item dentro do card da lista: define cantos arredondados e divisória. */
-enum class ItemPosition { SINGLE, FIRST, MIDDLE, LAST }
-
-fun itemPosition(index: Int, count: Int): ItemPosition = when {
-    count == 1 -> ItemPosition.SINGLE
-    index == 0 -> ItemPosition.FIRST
-    index == count - 1 -> ItemPosition.LAST
-    else -> ItemPosition.MIDDLE
-}
-
-private fun ItemPosition.shape(radius: Int = 12): Shape = when (this) {
-    ItemPosition.SINGLE -> RoundedCornerShape(radius.dp)
-    ItemPosition.FIRST -> RoundedCornerShape(topStart = radius.dp, topEnd = radius.dp)
-    ItemPosition.LAST -> RoundedCornerShape(bottomStart = radius.dp, bottomEnd = radius.dp)
-    ItemPosition.MIDDLE -> RectangleShape
-}
-
 /**
  * Borda de 1dp (#F1F1F1) em volta do card inteiro, não de cada item.
  * Cada item desenha um retângulo arredondado "esticado" para fora dos seus limites nos lados
@@ -152,4 +135,21 @@ fun DeviceRow(
             }
         }
     }
+}
+
+/** Posição do item dentro do card da lista: define cantos arredondados e divisória. */
+enum class ItemPosition { SINGLE, FIRST, MIDDLE, LAST }
+
+fun itemPosition(index: Int, count: Int): ItemPosition = when {
+    count == 1 -> ItemPosition.SINGLE
+    index == 0 -> ItemPosition.FIRST
+    index == count - 1 -> ItemPosition.LAST
+    else -> ItemPosition.MIDDLE
+}
+
+private fun ItemPosition.shape(radius: Int = 12): Shape = when (this) {
+    ItemPosition.SINGLE -> RoundedCornerShape(radius.dp)
+    ItemPosition.FIRST -> RoundedCornerShape(topStart = radius.dp, topEnd = radius.dp)
+    ItemPosition.LAST -> RoundedCornerShape(bottomStart = radius.dp, bottomEnd = radius.dp)
+    ItemPosition.MIDDLE -> RectangleShape
 }

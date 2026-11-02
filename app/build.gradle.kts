@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
+    alias(libs.plugins.detekt)
 }
 
 // O token da API NÃO é versionado: vem do local.properties (ignorado pelo Git)
@@ -58,6 +59,21 @@ android {
         compose = true
         buildConfig = true
     }
+    lint {
+        // Erro de lint quebra o build (e o CI); avisos aparecem no relatório.
+        abortOnError = true
+        checkDependencies = false
+        // Atualização de versões é decidida e testada à parte (ex.: Renovate/Dependabot),
+        // não como aviso de lint a cada build.
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
+    }
+}
+
+detekt {
+    // Parte do padrão do detekt e só sobrescreve o que está em config/detekt/detekt.yml.
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    parallel = true
 }
 
 room {
@@ -82,7 +98,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.hilt.work)
     ksp(libs.hilt.androidx.compiler)
 
@@ -110,4 +126,6 @@ dependencies {
     androidTestImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    detektPlugins(libs.detekt.rules.ktlint)
 }

@@ -17,6 +17,9 @@ import java.net.SocketTimeoutException
  * CancellationException é relançada para não quebrar o cancelamento estruturado
  * (ex.: usuário saiu da tela no meio da requisição).
  */
+// A exceção vira um AppError de propósito: o domínio só precisa saber o tipo da falha, e o
+// detalhe técnico já aparece no log do OkHttp (tag DesafioHttp) nos builds de debug.
+@Suppress("SwallowedException")
 suspend fun <T> safeApiCall(block: suspend () -> T): Outcome<T> =
     try {
         Outcome.Success(block())
@@ -33,11 +36,11 @@ suspend fun <T> safeApiCall(block: suspend () -> T): Outcome<T> =
     }
 
 internal fun httpCodeToError(code: Int, errorBody: String? = null): AppError = when (code) {
-    401, 403 -> AppError.Unauthorized
-    404 -> AppError.NotFound
-    408 -> AppError.Timeout
-    409 -> AppError.Conflict
-    400, 422 -> AppError.InvalidData(extractServerMessage(errorBody))
+    HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN -> AppError.Unauthorized
+    HttpStatus.NOT_FOUND -> AppError.NotFound
+    HttpStatus.REQUEST_TIMEOUT -> AppError.Timeout
+    HttpStatus.CONFLICT -> AppError.Conflict
+    HttpStatus.BAD_REQUEST, HttpStatus.UNPROCESSABLE_ENTITY -> AppError.InvalidData(extractServerMessage(errorBody))
     else -> AppError.Server(code)
 }
 
@@ -55,4 +58,14 @@ internal fun extractServerMessage(errorBody: String?): String? {
         else -> null
     }
     return text?.takeIf { it.isNotBlank() }
+}
+
+private object HttpStatus {
+    const val BAD_REQUEST = 400
+    const val UNAUTHORIZED = 401
+    const val FORBIDDEN = 403
+    const val NOT_FOUND = 404
+    const val REQUEST_TIMEOUT = 408
+    const val CONFLICT = 409
+    const val UNPROCESSABLE_ENTITY = 422
 }

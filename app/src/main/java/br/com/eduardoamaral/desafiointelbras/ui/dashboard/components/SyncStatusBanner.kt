@@ -55,10 +55,11 @@ fun SyncStatusBanner(banner: SyncBanner?, modifier: Modifier = Modifier) {
         val current = lastBanner ?: return@AnimatedVisibility
         val (icon, text) = when (current) {
             SyncBanner.Offline -> Icons.Outlined.CloudOff to stringResource(R.string.sync_offline)
-            is SyncBanner.OfflineWithPending -> Icons.Outlined.CloudOff to
-                pluralStringResource(R.plurals.sync_offline_pending, current.count, current.count)
-            is SyncBanner.Syncing -> Icons.Outlined.Sync to
-                pluralStringResource(R.plurals.sync_pending, current.count, current.count)
+            is SyncBanner.OfflineWithPending ->
+                Icons.Outlined.CloudOff to
+                    pluralStringResource(R.plurals.sync_offline_pending, current.count, current.count)
+            is SyncBanner.Syncing ->
+                Icons.Outlined.Sync to pluralStringResource(R.plurals.sync_pending, current.count, current.count)
         }
         Row(
             modifier = Modifier

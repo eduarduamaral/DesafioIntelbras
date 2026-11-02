@@ -23,7 +23,8 @@ enum class FailureKind { TRANSIENT, AUTH, ALREADY_DONE, REJECTED }
  */
 fun AppError.failureKind(): FailureKind = when (this) {
     AppError.Network, AppError.Timeout -> FailureKind.TRANSIENT
-    is AppError.Server -> if (code >= 500 || code == 429) FailureKind.TRANSIENT else FailureKind.REJECTED
+    is AppError.Server ->
+        if (code >= FIRST_SERVER_ERROR || code == TOO_MANY_REQUESTS) FailureKind.TRANSIENT else FailureKind.REJECTED
     AppError.Unauthorized -> FailureKind.AUTH
     AppError.NotFound -> FailureKind.ALREADY_DONE
     AppError.Conflict, is AppError.InvalidData, AppError.Unknown -> FailureKind.REJECTED
@@ -34,3 +35,6 @@ sealed interface SyncEvent {
     /** O servidor recusou uma remoção feita offline; o dispositivo voltou para a lista. */
     data class DeleteRejected(val deviceName: String) : SyncEvent
 }
+
+private const val FIRST_SERVER_ERROR = 500 // 5xx: problema do servidor, não do pedido
+private const val TOO_MANY_REQUESTS = 429

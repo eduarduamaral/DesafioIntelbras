@@ -168,17 +168,17 @@ abstract class DeviceDao {
         if (previous?.operation == OperationType.CREATE.name) {
             deleteById(id)
             deletePendingOperation(id)
-            return true
+        } else {
+            setSyncState(id, SyncState.PENDING_DELETE.name)
+            upsertPendingOperation(
+                PendingOperationEntity(
+                    deviceId = id,
+                    operation = OperationType.DELETE.name,
+                    deviceType = device.type,
+                    createdAt = previous?.createdAt ?: createdAt,
+                ),
+            )
         }
-        setSyncState(id, SyncState.PENDING_DELETE.name)
-        upsertPendingOperation(
-            PendingOperationEntity(
-                deviceId = id,
-                operation = OperationType.DELETE.name,
-                deviceType = device.type,
-                createdAt = previous?.createdAt ?: createdAt,
-            ),
-        )
         return true
     }
 

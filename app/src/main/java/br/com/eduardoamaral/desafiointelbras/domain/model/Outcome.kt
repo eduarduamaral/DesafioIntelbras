@@ -18,12 +18,15 @@ inline fun <T, R> Outcome<T>.map(transform: (T) -> R): Outcome<R> = when (this) 
 sealed interface AppError {
     data object Network : AppError
     data object Timeout : AppError
+
     /** A API responde 403 para token ausente/inválido. */
     data object Unauthorized : AppError
     data object NotFound : AppError
+
     /** 409: serial (vídeo) ou MAC (alarme) já cadastrado em outro dispositivo. */
     data object Conflict : AppError
-    /** 400/422: o servidor recusou os dados enviados. [serverMessage] traz o motivo, quando o servidor informa. */
+
+    /** 400/422: o servidor recusou os dados enviados. [serverMessage] traz o motivo, quando informado. */
     data class InvalidData(val serverMessage: String? = null) : AppError
     data class Server(val code: Int) : AppError
     data object Unknown : AppError

@@ -34,9 +34,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .addInterceptor(AuthInterceptor(BuildConfig.API_TOKEN))
         .apply {
             if (BuildConfig.DEBUG) {
@@ -63,3 +63,5 @@ object NetworkModule {
     @Singleton
     fun provideDeviceApi(retrofit: Retrofit): DeviceApi = retrofit.create(DeviceApi::class.java)
 }
+
+private const val TIMEOUT_SECONDS = 15L

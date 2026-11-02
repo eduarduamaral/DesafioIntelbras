@@ -96,7 +96,11 @@ class DashboardViewModel @Inject constructor(
             repository.syncEvents.collect { event ->
                 when (event) {
                     is SyncEvent.DeleteRejected -> messageBus.send(
-                        UserMessage(R.string.msg_delete_rejected, isError = true, formatArgs = listOf(event.deviceName)),
+                        UserMessage(
+                            R.string.msg_delete_rejected,
+                            isError = true,
+                            formatArgs = listOf(event.deviceName),
+                        ),
                     )
                 }
             }
@@ -136,9 +140,10 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = repository.delete(id)) {
                 // Some da lista nos dois casos; offline, o texto avisa que o servidor ainda não sabe.
-                is Outcome.Success -> messageBus.send(
-                    UserMessage(if (isOnline.value) R.string.msg_device_removed else R.string.msg_device_removed_offline),
-                )
+                is Outcome.Success -> {
+                    val text = if (isOnline.value) R.string.msg_device_removed else R.string.msg_device_removed_offline
+                    messageBus.send(UserMessage(text))
+                }
                 is Outcome.Failure ->
                     messageBus.send(result.error.toUserMessage())
             }

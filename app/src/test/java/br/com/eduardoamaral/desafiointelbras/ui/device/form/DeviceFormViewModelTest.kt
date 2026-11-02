@@ -194,7 +194,9 @@ class DeviceFormViewModelTest {
     fun `salvar sem rede avisa que nada foi salvo e mantem a tela aberta`() = runTest {
         repository.writeError = AppError.Network
         val messages = mutableListOf<UserMessage>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { messageBus.messages.collect { messages += it } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            messageBus.messages.collect { messages += it }
+        }
         val viewModel = createViewModel()
         viewModel.onTypeChange(DeviceType.ALARM)
         viewModel.onNameChange("Casa")

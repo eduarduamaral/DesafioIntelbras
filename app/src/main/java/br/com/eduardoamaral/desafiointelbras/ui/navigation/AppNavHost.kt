@@ -3,8 +3,10 @@ package br.com.eduardoamaral.desafiointelbras.ui.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.platform.LocalResources
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -18,14 +20,16 @@ import br.com.eduardoamaral.desafiointelbras.ui.device.form.DeviceFormRoute
 fun AppNavHost(messageBus: UserMessageBus) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    // LocalResources (e não LocalContext) para o texto acompanhar mudanças de idioma/configuração.
+    // rememberUpdatedState: o coletor continua o mesmo, mas sempre lê o Resources atual.
+    val resources by rememberUpdatedState(LocalResources.current)
 
     // Um coletor só, no topo: a mensagem aparece mesmo se a tela que a gerou já saiu da pilha.
     LaunchedEffect(messageBus) {
         messageBus.messages.collect { message ->
             snackbarHostState.showSnackbar(
                 AppSnackbarVisuals(
-                    message = context.getString(message.textRes, *message.formatArgs.toTypedArray()),
+                    message = resources.getString(message.textRes, *message.formatArgs.toTypedArray()),
                     isError = message.isError,
                 ),
             )

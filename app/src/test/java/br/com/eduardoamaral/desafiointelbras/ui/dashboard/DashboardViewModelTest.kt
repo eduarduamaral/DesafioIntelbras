@@ -160,7 +160,9 @@ class DashboardViewModelTest {
 
     private fun TestScope.collectMessages(): List<UserMessage> {
         val messages = mutableListOf<UserMessage>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { messageBus.messages.collect { messages += it } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            messageBus.messages.collect { messages += it }
+        }
         return messages
     }
 

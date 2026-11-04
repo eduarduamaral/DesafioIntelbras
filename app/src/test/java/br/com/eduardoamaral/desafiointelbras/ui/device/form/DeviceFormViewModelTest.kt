@@ -191,8 +191,8 @@ class DeviceFormViewModelTest {
     }
 
     @Test
-    fun `salvar sem rede avisa que nada foi salvo e mantem a tela aberta`() = runTest {
-        repository.writeError = AppError.Network
+    fun `salvar sem rede fica na fila avisa e fecha a tela`() = runTest {
+        repository.queueWrites = true
         val messages = mutableListOf<UserMessage>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             messageBus.messages.collect { messages += it }
@@ -205,7 +205,7 @@ class DeviceFormViewModelTest {
 
         viewModel.onSave()
 
-        assertEquals(UserMessage(R.string.error_network_write, isError = true), messages.single())
-        assertFalse(viewModel.uiState.value.shouldClose)
+        assertEquals(UserMessage(R.string.msg_saved_offline), messages.single())
+        assertTrue(viewModel.uiState.value.shouldClose)
     }
 }

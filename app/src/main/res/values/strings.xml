@@ -93,7 +93,11 @@
     <string name="msg_device_removed">Dispositivo removido</string>
     <string name="msg_device_removed_offline">Dispositivo removido. Será sincronizado quando houver conexão.</string>
     <string name="msg_delete_rejected">O servidor recusou a remoção de %1$s. Ele voltou para a lista.</string>
-    <string name="error_network_write">Sem conexão. Nada foi salvo; tente de novo quando estiver online.</string>
+    <string name="msg_saved_offline">Salvo. Será sincronizado quando houver conexão.</string>
+    <string name="msg_create_rejected_conflict">%1$s não foi criado: número de série ou MAC já cadastrado.</string>
+    <string name="msg_create_rejected">O servidor recusou %1$s, criado sem conexão. Ele foi descartado.</string>
+    <string name="msg_update_rejected">O servidor recusou a edição de %1$s. A versão dele volta na próxima atualização.</string>
+    <string name="msg_removed_on_server">%1$s foi removido em outro aparelho.</string>
     <string name="error_network">Sem conexão. Mostrando os últimos dados salvos.</string>
     <string name="error_timeout">O servidor demorou para responder. Tente novamente.</string>
     <string name="error_unauthorized">Acesso negado: token inválido ou ausente.</string>

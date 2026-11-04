@@ -4,6 +4,7 @@ import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDataSource
+import br.com.eduardoamaral.desafiointelbras.data.local.TemporaryIds
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.sync.SyncScheduler
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
@@ -15,7 +16,10 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.FailureKind
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
 import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
+import br.com.eduardoamaral.desafiointelbras.domain.model.WriteResult
 import br.com.eduardoamaral.desafiointelbras.domain.model.failureKind
+import br.com.eduardoamaral.desafiointelbras.domain.model.toDevice
+import br.com.eduardoamaral.desafiointelbras.domain.model.toInput
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +43,9 @@ import javax.inject.Singleton
  *
  * Remoção é otimista (padrão Outbox): muda o banco e enfileira numa transação ([outbox]), e o
  * [syncScheduler] pede o envio, que acontece quando houver conexão.
+ *
+ * Criar e editar tentam a API primeiro: com rede, um 409 (serial ou MAC repetido) volta na
+ * hora e marca o campo no formulário. Sem rede, gravam no banco e entram na mesma fila.
  */
 @Singleton
 class OfflineFirstDeviceRepository @Inject constructor(
@@ -49,6 +56,12 @@ class OfflineFirstDeviceRepository @Inject constructor(
 ) : DeviceRepository {
 
     private val mutex = Mutex()
+
+    /**
+     * Id temporário -> id do servidor, para itens criados offline que já foram enviados.
+     * Uma tela aberta com o id antigo (ex.: a edição) continua funcionando depois da troca.
+     */
+    private val resolvedIds = mutableMapOf<String, String>()
 
     // Buffer: o worker não fica esperando a UI consumir o aviso.
     private val _syncEvents = MutableSharedFlow<SyncEvent>(extraBufferCapacity = 8)
@@ -88,16 +101,49 @@ class OfflineFirstDeviceRepository @Inject constructor(
 
     /**
      * Antes de criar, envia a fila. Caso real: remover offline e recriar com o mesmo
-     * serial/MAC. Se a remoção ainda não tivesse chegado, o servidor responderia 409
-     * (serial/MAC já existe). Sem rede, o envio falha rápido e a criação falha igual.
+     * serial/MAC. Se a remoção ainda não tivesse chegado, o servidor responderia 409.
+     * Se a fila não andou por falta de rede, nem tenta a API: vai direto para a fila.
      */
-    override suspend fun create(input: DeviceInput): Outcome<Device> = mutex.withLock {
-        sendPendingOperations()
-        remote.create(input).alsoSaveLocally()
+    override suspend fun create(input: DeviceInput): Outcome<WriteResult> = mutex.withLock {
+        val queue = sendPendingOperations()
+        if (queue == PendingSyncResult.BLOCKED) return@withLock Outcome.Failure(AppError.Unauthorized)
+        if (queue == PendingSyncResult.DONE) {
+            val result = remote.create(input)
+            if (result is Outcome.Success) {
+                local.upsert(result.data)
+                return@withLock Outcome.Success(WriteResult.Synced(result.data))
+            }
+            val failure = result as Outcome.Failure
+            if (failure.error.failureKind() != FailureKind.TRANSIENT) return@withLock failure
+        }
+        val device = input.toDevice(TemporaryIds.new())
+        outbox.enqueueCreate(device)
+        syncScheduler.schedule()
+        Outcome.Success(WriteResult.Queued(device))
     }
 
-    override suspend fun update(id: String, input: DeviceInput): Outcome<Device> = mutex.withLock {
-        remote.update(id, input).alsoSaveLocally()
+    /**
+     * Mesma ideia do [create]. Um item criado offline e ainda não enviado (id temporário)
+     * nunca vai direto à API: o servidor não o conhece, então a edição entra na fila e
+     * segue junto com a criação.
+     */
+    override suspend fun update(id: String, input: DeviceInput): Outcome<WriteResult> = mutex.withLock {
+        val queue = sendPendingOperations()
+        if (queue == PendingSyncResult.BLOCKED) return@withLock Outcome.Failure(AppError.Unauthorized)
+        val target = resolvedIds[id] ?: id
+        if (queue == PendingSyncResult.DONE && !TemporaryIds.isTemporary(target)) {
+            val result = remote.update(target, input)
+            if (result is Outcome.Success) {
+                local.upsert(result.data)
+                return@withLock Outcome.Success(WriteResult.Synced(result.data))
+            }
+            val failure = result as Outcome.Failure
+            if (failure.error.failureKind() != FailureKind.TRANSIENT) return@withLock failure
+        }
+        val device = input.toDevice(target)
+        if (!outbox.enqueueUpdate(device)) return@withLock Outcome.Failure(AppError.NotFound)
+        syncScheduler.schedule()
+        Outcome.Success(WriteResult.Queued(device))
     }
 
     /**
@@ -106,7 +152,7 @@ class OfflineFirstDeviceRepository @Inject constructor(
      * (que conversa com a API) acontece depois, sob o mutex, em [syncPendingOperations].
      */
     override suspend fun delete(id: String): Outcome<Unit> {
-        if (!outbox.enqueueDelete(id)) return Outcome.Failure(AppError.NotFound)
+        if (!outbox.enqueueDelete(resolvedIds[id] ?: id)) return Outcome.Failure(AppError.NotFound)
         syncScheduler.schedule()
         return Outcome.Success(Unit)
     }
@@ -125,13 +171,78 @@ class OfflineFirstDeviceRepository @Inject constructor(
     private suspend fun sendPendingOperations(): PendingSyncResult {
         for (operation in outbox.pendingOperations()) {
             val result = when (operation.operation) {
+                OperationType.CREATE -> sendCreate(operation)
+                OperationType.UPDATE -> sendUpdate(operation)
                 OperationType.DELETE -> sendDelete(operation)
-                // Criar/editar offline ainda não geram operações (ver README, próximos passos).
-                OperationType.CREATE, OperationType.UPDATE -> null
             }
             if (result != null) return result
         }
         return PendingSyncResult.DONE
+    }
+
+    /**
+     * Envia a versão atual da linha (não uma cópia guardada na fila): criar e depois editar
+     * offline vira um POST só, já com os dados finais.
+     * @return null para seguir para a próxima operação, ou o motivo para parar a rodada.
+     */
+    private suspend fun sendCreate(operation: PendingOperation): PendingSyncResult? {
+        val temporaryId = operation.deviceId
+        // A linha sumiu: não há o que enviar.
+        val device = local.getDevice(temporaryId) ?: return dropMissing(temporaryId)
+        val result = remote.create(device.toInput())
+        if (result is Outcome.Success) {
+            outbox.confirmCreate(temporaryId, result.data)
+            resolvedIds[temporaryId] = result.data.id
+            return null
+        }
+        val error = (result as Outcome.Failure).error
+        return when (error.failureKind()) {
+            FailureKind.TRANSIENT -> {
+                outbox.registerFailedAttempt(temporaryId)
+                PendingSyncResult.RETRY_LATER
+            }
+            FailureKind.AUTH -> PendingSyncResult.BLOCKED
+            // Recusado (ex.: 409, serial já existe): o item só existia no app e é descartado.
+            FailureKind.REJECTED, FailureKind.ALREADY_DONE -> {
+                outbox.discardCreate(temporaryId)
+                _syncEvents.tryEmit(SyncEvent.CreateRejected(device.name, error))
+                null
+            }
+        }
+    }
+
+    /** Tira da fila uma operação cujo dispositivo já não existe no banco. */
+    private suspend fun dropMissing(id: String): PendingSyncResult? {
+        outbox.discardCreate(id)
+        return null
+    }
+
+    /** Última escrita vence: a API não tem versão para detectar edição concorrente. */
+    private suspend fun sendUpdate(operation: PendingOperation): PendingSyncResult? {
+        val id = operation.deviceId
+        val device = local.getDevice(id) ?: return dropMissing(id)
+        val result = remote.update(id, device.toInput())
+        if (result is Outcome.Success) {
+            outbox.confirmUpdate(result.data)
+            return null
+        }
+        return when ((result as Outcome.Failure).error.failureKind()) {
+            FailureKind.TRANSIENT -> {
+                outbox.registerFailedAttempt(id)
+                PendingSyncResult.RETRY_LATER
+            }
+            FailureKind.AUTH -> PendingSyncResult.BLOCKED
+            FailureKind.ALREADY_DONE -> { // 404: removido no servidor (em outro aparelho)
+                outbox.discardCreate(id) // apaga a linha, o favorito e a operação
+                _syncEvents.tryEmit(SyncEvent.RemovedOnServer(device.name))
+                null
+            }
+            FailureKind.REJECTED -> { // sai da fila; o próximo refresh traz a versão do servidor
+                outbox.dropPendingOperation(id)
+                _syncEvents.tryEmit(SyncEvent.UpdateRejected(device.name))
+                null
+            }
+        }
     }
 
     /** @return null para seguir para a próxima operação, ou o motivo para parar a rodada. */
@@ -161,10 +272,4 @@ class OfflineFirstDeviceRepository @Inject constructor(
     }
 
     override suspend fun toggleFavorite(id: String) = local.toggleFavorite(id)
-
-    /** Com sucesso, grava a resposta do servidor (que é a versão oficial) no banco local. */
-    private suspend fun Outcome<Device>.alsoSaveLocally(): Outcome<Device> {
-        if (this is Outcome.Success) local.upsert(data)
-        return this
-    }
 }

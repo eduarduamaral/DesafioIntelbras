@@ -12,6 +12,7 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceValidator
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.ValidationError
+import br.com.eduardoamaral.desafiointelbras.domain.model.WriteResult
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
@@ -138,19 +139,17 @@ class DeviceFormViewModel @Inject constructor(
             }
             when (result) {
                 is Outcome.Success -> {
-                    messageBus.send(
-                        UserMessage(if (deviceId == null) R.string.msg_device_created else R.string.msg_device_updated),
-                    )
+                    val text = when {
+                        result.data is WriteResult.Queued -> R.string.msg_saved_offline
+                        deviceId == null -> R.string.msg_device_created
+                        else -> R.string.msg_device_updated
+                    }
+                    messageBus.send(UserMessage(text))
                     _uiState.update { it.copy(isSaving = false, shouldClose = true) }
                 }
                 is Outcome.Failure -> {
-                    // Criar e editar ainda dependem do servidor: deixa claro que nada foi salvo.
-                    val message = if (result.error == AppError.Network) {
-                        UserMessage(R.string.error_network_write, isError = true)
-                    } else {
-                        result.error.toUserMessage()
-                    }
-                    messageBus.send(message)
+                    // Sem rede o repositório já põe na fila; aqui só chegam recusas do servidor.
+                    messageBus.send(result.error.toUserMessage())
                     _uiState.update {
                         it.copy(isSaving = false, errors = it.errors + conflictFieldError(input, result.error))
                     }

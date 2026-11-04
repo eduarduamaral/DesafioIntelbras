@@ -94,15 +94,19 @@ class DashboardViewModel @Inject constructor(
         refresh()
         viewModelScope.launch {
             repository.syncEvents.collect { event ->
-                when (event) {
-                    is SyncEvent.DeleteRejected -> messageBus.send(
-                        UserMessage(
-                            R.string.msg_delete_rejected,
-                            isError = true,
-                            formatArgs = listOf(event.deviceName),
-                        ),
-                    )
+                // when exaustivo: um aviso novo no domínio não compila até ganhar sua mensagem.
+                val text = when (event) {
+                    is SyncEvent.DeleteRejected -> R.string.msg_delete_rejected
+                    is SyncEvent.CreateRejected ->
+                        if (event.error == AppError.Conflict) {
+                            R.string.msg_create_rejected_conflict
+                        } else {
+                            R.string.msg_create_rejected
+                        }
+                    is SyncEvent.UpdateRejected -> R.string.msg_update_rejected
+                    is SyncEvent.RemovedOnServer -> R.string.msg_removed_on_server
                 }
+                messageBus.send(UserMessage(text, isError = true, formatArgs = listOf(event.deviceName)))
             }
         }
     }

@@ -1,5 +1,6 @@
 package br.com.eduardoamaral.desafiointelbras.data.repository
 
+import br.com.eduardoamaral.desafiointelbras.data.local.TemporaryIds
 import br.com.eduardoamaral.desafiointelbras.data.remote.RetrofitDeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.VideoDeviceDto
@@ -10,12 +11,14 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
 import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
+import br.com.eduardoamaral.desafiointelbras.domain.model.WriteResult
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceApi
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeDeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.testutil.FakeSyncScheduler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -336,7 +339,7 @@ class OfflineFirstDeviceRepositoryTest {
         repository.refresh()
 
         val created = repository.create(DeviceInput.Alarm("Casa", "AABBCCDDEEFF", "1234"))
-        val alarmId = (created as Outcome.Success).data.id
+        val alarmId = (created as Outcome.Success).data.device.id
         assertEquals(listOf(alarmId, "v1"), local.snapshot.map { it.id })
 
         repository.update(
@@ -345,5 +348,148 @@ class OfflineFirstDeviceRepositoryTest {
         )
         repository.refresh()
         assertEquals(listOf(alarmId, "v1"), local.snapshot.map { it.id })
+    }
+
+    // ---- Criação e edição offline ----
+
+    private fun TestScope.collectEvents(): List<SyncEvent> {
+        val events = mutableListOf<SyncEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.syncEvents.collect { events += it }
+        }
+        return events
+    }
+
+    private val newCamera = DeviceInput.Video(name = "Nova", serial = "NEW001", username = "admin", password = "1234")
+
+    @Test
+    fun `create sem rede grava com id temporario e entra na fila`() = runTest {
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+
+        val result = repository.create(newCamera)
+
+        val queued = (result as Outcome.Success).data
+        assertTrue(queued is WriteResult.Queued)
+        assertTrue(TemporaryIds.isTemporary(queued.device.id))
+        assertEquals(listOf("Nova"), local.snapshot.map { it.name })
+        assertEquals(setOf(queued.device.id), local.pendingIds)
+        assertEquals(1, scheduler.scheduled)
+        assertTrue(api.videos.isEmpty())
+    }
+
+    @Test
+    fun `criacao offline e enviada depois trocando o id e mantendo o favorito`() = runTest {
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        val temporaryId = (repository.create(newCamera) as Outcome.Success).data.device.id
+        repository.toggleFavorite(temporaryId)
+
+        api.videoError = null // a conexão voltou
+        assertEquals(PendingSyncResult.DONE, repository.syncPendingOperations())
+
+        val serverId = api.videos.single().id
+        val device = local.snapshot.single()
+        assertEquals(serverId, device.id)
+        assertTrue(device.isFavorite)
+        assertTrue(local.pendingIds.isEmpty())
+    }
+
+    @Test
+    fun `criar e editar offline vira um envio so com os dados finais`() = runTest {
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        val temporaryId = (repository.create(newCamera) as Outcome.Success).data.device.id
+        val edited = repository.update(temporaryId, newCamera.copy(name = "Nova renomeada"))
+        assertTrue((edited as Outcome.Success).data is WriteResult.Queued)
+
+        api.videoError = null
+        repository.syncPendingOperations()
+
+        assertEquals(listOf("Nova renomeada"), api.videos.map { it.name })
+        assertEquals(listOf("Nova renomeada"), local.snapshot.map { it.name })
+    }
+
+    @Test
+    fun `criacao offline recusada pelo servidor e descartada e avisa o motivo`() = runTest {
+        val events = collectEvents()
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.create(newCamera.copy(serial = "ABC123"))
+        api.videoError = null
+        api.videos += camera // alguém cadastrou o mesmo serial enquanto estávamos offline
+
+        repository.syncPendingOperations()
+
+        assertTrue(local.snapshot.isEmpty())
+        assertTrue(local.pendingIds.isEmpty())
+        assertEquals(listOf(SyncEvent.CreateRejected("Nova", AppError.Conflict)), events)
+    }
+
+    @Test
+    fun `edicao sem rede aparece na hora e e enviada depois`() = runTest {
+        api.videos += camera
+        repository.refresh()
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+
+        val result = repository.update("v1", DeviceInput.Video("Editada", "ABC123", "admin", "1234"))
+
+        assertTrue((result as Outcome.Success).data is WriteResult.Queued)
+        assertEquals("Editada", local.snapshot.single().name)
+
+        api.videoError = null
+        repository.syncPendingOperations()
+        assertEquals("Editada", api.videos.single().name)
+        assertTrue(local.pendingIds.isEmpty())
+    }
+
+    @Test
+    fun `edicao offline de item removido no servidor sai da lista e avisa`() = runTest {
+        val events = collectEvents()
+        api.videos += camera
+        repository.refresh()
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.update("v1", DeviceInput.Video("Editada", "ABC123", "admin", "1234"))
+
+        api.videos.clear() // removido em outro aparelho
+        api.videoError = null
+        repository.syncPendingOperations()
+
+        assertTrue(local.snapshot.isEmpty())
+        assertEquals(listOf(SyncEvent.RemovedOnServer("Editada")), events)
+    }
+
+    @Test
+    fun `edicao offline recusada sai da fila e avisa`() = runTest {
+        val events = collectEvents()
+        api.videos += camera
+        repository.refresh()
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.update("v1", DeviceInput.Video("Editada", "ABC123", "admin", "1234"))
+
+        api.videoError = httpError(400)
+        repository.syncPendingOperations()
+
+        assertTrue(local.pendingIds.isEmpty())
+        assertEquals(listOf(SyncEvent.UpdateRejected("Editada")), events)
+    }
+
+    @Test
+    fun `editar com o id temporario depois do envio usa o id do servidor`() = runTest {
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        val temporaryId = (repository.create(newCamera) as Outcome.Success).data.device.id
+        api.videoError = null
+        repository.syncPendingOperations() // criado no servidor; a tela de edição ainda tem o id antigo
+
+        val result = repository.update(temporaryId, newCamera.copy(name = "Editada online"))
+
+        assertTrue((result as Outcome.Success).data is WriteResult.Synced)
+        assertEquals("Editada online", api.videos.single().name)
+    }
+
+    @Test
+    fun `com rede o 409 volta para o formulario e nada entra na fila`() = runTest {
+        api.videos += camera
+
+        val result = repository.create(newCamera.copy(serial = "ABC123"))
+
+        assertEquals(Outcome.Failure(AppError.Conflict), result)
+        assertTrue(local.pendingIds.isEmpty())
     }
 }

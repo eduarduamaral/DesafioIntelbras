@@ -32,8 +32,19 @@ fun AppError.failureKind(): FailureKind = when (this) {
 
 /** Acontecimentos da sincronização em segundo plano que o usuário precisa saber. */
 sealed interface SyncEvent {
+    val deviceName: String
+
     /** O servidor recusou uma remoção feita offline; o dispositivo voltou para a lista. */
-    data class DeleteRejected(val deviceName: String) : SyncEvent
+    data class DeleteRejected(override val deviceName: String) : SyncEvent
+
+    /** O item criado offline foi recusado e descartado; [error] diz o motivo (ex.: 409). */
+    data class CreateRejected(override val deviceName: String, val error: AppError) : SyncEvent
+
+    /** A edição offline foi recusada; a versão do servidor volta no próximo refresh. */
+    data class UpdateRejected(override val deviceName: String) : SyncEvent
+
+    /** O item editado offline já não existia no servidor (removido em outro aparelho). */
+    data class RemovedOnServer(override val deviceName: String) : SyncEvent
 }
 
 private const val FIRST_SERVER_ERROR = 500 // 5xx: problema do servidor, não do pedido

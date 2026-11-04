@@ -21,6 +21,8 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
 import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
+import br.com.eduardoamaral.desafiointelbras.domain.model.WriteResult
+import br.com.eduardoamaral.desafiointelbras.domain.model.toDevice
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -68,6 +70,9 @@ class FakeDeviceRepository : DeviceRepository {
     val devices = MutableStateFlow<List<Device>>(emptyList())
     var refreshResult: Outcome<Unit> = Outcome.Success(Unit)
     var writeError: AppError? = null
+
+    /** true simula "sem rede": criar e editar dão certo, mas ficam na fila. */
+    var queueWrites = false
     var refreshCount = 0
     val created = mutableListOf<DeviceInput>()
     val updated = mutableListOf<Pair<String, DeviceInput>>()
@@ -85,12 +90,12 @@ class FakeDeviceRepository : DeviceRepository {
         return refreshResult
     }
 
-    override suspend fun create(input: DeviceInput): Outcome<Device> {
+    override suspend fun create(input: DeviceInput): Outcome<WriteResult> {
         created += input
         return result("new", input)
     }
 
-    override suspend fun update(id: String, input: DeviceInput): Outcome<Device> {
+    override suspend fun update(id: String, input: DeviceInput): Outcome<WriteResult> {
         updated += id to input
         return result(id, input)
     }
@@ -116,13 +121,10 @@ class FakeDeviceRepository : DeviceRepository {
     val syncEventsFlow = MutableSharedFlow<SyncEvent>(extraBufferCapacity = 8)
     override val syncEvents: Flow<SyncEvent> = syncEventsFlow
 
-    private fun result(id: String, input: DeviceInput): Outcome<Device> {
+    private fun result(id: String, input: DeviceInput): Outcome<WriteResult> {
         writeError?.let { return Outcome.Failure(it) }
-        val details = when (input) {
-            is DeviceInput.Video -> DeviceDetails.Video(input.serial, input.username, input.password)
-            is DeviceInput.Alarm -> DeviceDetails.Alarm(input.macAddress, input.password)
-        }
-        return Outcome.Success(Device(id, input.name, details))
+        val device = input.toDevice(id)
+        return Outcome.Success(if (queueWrites) WriteResult.Queued(device) else WriteResult.Synced(device))
     }
 }
 
@@ -254,8 +256,9 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource, PendingOperationsLocalD
 
     override suspend fun dropPendingOperation(id: String) = rollbackDelete(id)
 
+    /** Igual à view do Room: só a remoção pendente esconde o item; criação e edição aparecem. */
     private fun visible(list: List<Device>, pend: Map<String, PendingOperation>) =
-        list.filterNot { it.id in pend }
+        list.filterNot { pend[it.id]?.operation == OperationType.DELETE }
 
     private fun List<Device>.withFavorites(favs: Set<String>) =
         map { it.copy(isFavorite = it.id in favs) }
@@ -302,6 +305,7 @@ class FakeDeviceApi : DeviceApi {
 
     override suspend fun updateVideoDevice(id: String, body: VideoDeviceRequest): VideoDeviceDto {
         videoError?.let { throw it }
+        if (videos.none { it.id == id }) throw httpError(404)
         val updated = VideoDeviceDto(id, body.name, body.serial, body.username, body.password)
         videos.replaceAll { if (it.id == id) updated else it }
         return updated
@@ -327,6 +331,7 @@ class FakeDeviceApi : DeviceApi {
 
     override suspend fun updateAlarmCentral(id: String, body: AlarmCentralRequest): AlarmCentralDto {
         alarmError?.let { throw it }
+        if (alarms.none { it.id == id }) throw httpError(404)
         val updated = AlarmCentralDto(id, body.name, body.macAddress, body.password)
         alarms.replaceAll { if (it.id == id) updated else it }
         return updated
@@ -338,7 +343,9 @@ class FakeDeviceApi : DeviceApi {
         alarms.removeAll { it.id == id }
     }
 
-    private fun conflict() = HttpException(Response.error<Any>(409, "".toResponseBody()))
+    private fun conflict() = httpError(409)
+
+    private fun httpError(code: Int) = HttpException(Response.error<Any>(code, "".toResponseBody()))
 
     companion object {
         val NETWORK_ERROR = IOException("offline")

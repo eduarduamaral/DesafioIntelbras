@@ -225,4 +225,17 @@ class DashboardViewModelTest {
         assertTrue(messages.isEmpty())
         assertEquals(SyncBanner.Offline, viewModel.uiState.value.syncBanner)
     }
+
+    @Test
+    fun `criacao offline recusada por serial repetido vira snackbar especifica`() = runTest {
+        val messages = collectMessages()
+        createViewModel()
+
+        repository.syncEventsFlow.emit(SyncEvent.CreateRejected("Câmera nova", AppError.Conflict))
+
+        assertEquals(
+            UserMessage(R.string.msg_create_rejected_conflict, isError = true, formatArgs = listOf("Câmera nova")),
+            messages.single(),
+        )
+    }
 }

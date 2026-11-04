@@ -3,6 +3,7 @@ package br.com.eduardoamaral.desafiointelbras.testutil
 import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
+import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
@@ -129,8 +130,10 @@ class FakeDeviceRepository : DeviceRepository {
  * Banco local em memória, com as mesmas regras do DeviceDao (testadas com SQLite real em
  * DeviceDaoTest): remoção pendente esconde o item sem apagar, a sincronização não
  * sobrescreve itens com operação na fila e a lista vem do mais recente para o mais antigo.
+ *
+ * Implementa as duas interfaces sobre o mesmo estado em memória, como o Room faz com um banco só.
  */
-class FakeDeviceLocalDataSource : DeviceLocalDataSource {
+class FakeDeviceLocalDataSource : DeviceLocalDataSource, PendingOperationsLocalDataSource {
     private val devices = MutableStateFlow<List<Device>>(emptyList())
     private val favorites = MutableStateFlow<Set<String>>(emptySet())
 
@@ -173,7 +176,10 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
         this.devices.update { current ->
             // Itens com operação na fila mantêm a versão local (não "ressuscitam").
             val localPending = current.filter { it.id in pendingIds }.associateBy { it.id }
-            current.filterNot { it.type == type } + devices.map { localPending[it.id] ?: it }
+            val serverIds = devices.map { it.id }.toSet()
+            // Itens com operação na fila que o servidor não conhece (criados offline) ficam.
+            val localOnly = current.filter { it.type == type && it.id in pendingIds && it.id !in serverIds }
+            current.filterNot { it.type == type } + devices.map { localPending[it.id] ?: it } + localOnly
         }
         // espelha o CASCADE: favorito de item que sumiu é removido
         val ids = this.devices.value.map { it.id }.toSet()
@@ -214,6 +220,39 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource {
     override suspend fun registerFailedAttempt(id: String) {
         failedAttempts[id] = (failedAttempts[id] ?: 0) + 1
     }
+
+    override suspend fun enqueueCreate(device: Device) {
+        assignOrder(device.id)
+        devices.update { list -> list.filterNot { it.id == device.id } + device }
+        pending.update { it + (device.id to PendingOperation(device.id, OperationType.CREATE, device.type)) }
+    }
+
+    override suspend fun enqueueUpdate(device: Device): Boolean {
+        if (devices.value.none { it.id == device.id }) return false
+        val previous = pending.value[device.id]
+        if (previous?.operation == OperationType.DELETE) return false
+        devices.update { list -> list.map { if (it.id == device.id) device else it } }
+        if (previous == null) {
+            pending.update { it + (device.id to PendingOperation(device.id, OperationType.UPDATE, device.type)) }
+        }
+        return true
+    }
+
+    override suspend fun confirmCreate(temporaryId: String, created: Device) {
+        sortOrder[temporaryId]?.let { sortOrder[created.id] = it } ?: assignOrder(created.id)
+        devices.update { list -> list.filterNot { it.id == temporaryId } + created.copy(isFavorite = false) }
+        if (temporaryId in favorites.value) favorites.update { it - temporaryId + created.id }
+        pending.update { it - temporaryId }
+    }
+
+    override suspend fun confirmUpdate(updated: Device) {
+        devices.update { list -> list.map { if (it.id == updated.id) updated else it } }
+        pending.update { it - updated.id }
+    }
+
+    override suspend fun discardCreate(temporaryId: String) = confirmDelete(temporaryId)
+
+    override suspend fun dropPendingOperation(id: String) = rollbackDelete(id)
 
     private fun visible(list: List<Device>, pend: Map<String, PendingOperation>) =
         list.filterNot { it.id in pend }

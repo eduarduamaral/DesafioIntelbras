@@ -3,6 +3,7 @@ package br.com.eduardoamaral.desafiointelbras.data.repository
 import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
+import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.sync.SyncScheduler
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
@@ -36,13 +37,14 @@ import javax.inject.Singleton
  * editar e o envio da fila). Sem ele, um refresh iniciado antes de um "criar" poderia
  * terminar depois e apagar o item recém-criado (a lista do servidor ainda não o tinha).
  *
- * Remoção é otimista (padrão Outbox): muda o banco e enfileira numa transação, e o
+ * Remoção é otimista (padrão Outbox): muda o banco e enfileira numa transação ([outbox]), e o
  * [syncScheduler] pede o envio, que acontece quando houver conexão.
  */
 @Singleton
 class OfflineFirstDeviceRepository @Inject constructor(
     private val remote: DeviceRemoteDataSource,
     private val local: DeviceLocalDataSource,
+    private val outbox: PendingOperationsLocalDataSource,
     private val syncScheduler: SyncScheduler,
 ) : DeviceRepository {
 
@@ -52,7 +54,7 @@ class OfflineFirstDeviceRepository @Inject constructor(
     private val _syncEvents = MutableSharedFlow<SyncEvent>(extraBufferCapacity = 8)
     override val syncEvents: Flow<SyncEvent> = _syncEvents.asSharedFlow()
 
-    override fun observePendingCount(): Flow<Int> = local.observePendingCount()
+    override fun observePendingCount(): Flow<Int> = outbox.observePendingCount()
 
     override fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>> =
         local.observeDevices(query.trim(), filter)
@@ -104,7 +106,7 @@ class OfflineFirstDeviceRepository @Inject constructor(
      * (que conversa com a API) acontece depois, sob o mutex, em [syncPendingOperations].
      */
     override suspend fun delete(id: String): Outcome<Unit> {
-        if (!local.enqueueDelete(id)) return Outcome.Failure(AppError.NotFound)
+        if (!outbox.enqueueDelete(id)) return Outcome.Failure(AppError.NotFound)
         syncScheduler.schedule()
         return Outcome.Success(Unit)
     }
@@ -121,7 +123,7 @@ class OfflineFirstDeviceRepository @Inject constructor(
      * falhariam do mesmo jeito.
      */
     private suspend fun sendPendingOperations(): PendingSyncResult {
-        for (operation in local.pendingOperations()) {
+        for (operation in outbox.pendingOperations()) {
             val result = when (operation.operation) {
                 OperationType.DELETE -> sendDelete(operation)
                 // Criar/editar offline ainda não geram operações (ver README, próximos passos).
@@ -137,21 +139,21 @@ class OfflineFirstDeviceRepository @Inject constructor(
         val id = operation.deviceId
         val result = remote.delete(id, operation.deviceType)
         if (result is Outcome.Success) {
-            local.confirmDelete(id)
+            outbox.confirmDelete(id)
             return null
         }
         return when ((result as Outcome.Failure).error.failureKind()) {
             FailureKind.ALREADY_DONE -> { // 404: o servidor já não tem o item
-                local.confirmDelete(id)
+                outbox.confirmDelete(id)
                 null
             }
             FailureKind.REJECTED -> { // recusado de vez: o item volta para a lista
-                local.rollbackDelete(id)
+                outbox.rollbackDelete(id)
                 local.getDevice(id)?.let { _syncEvents.tryEmit(SyncEvent.DeleteRejected(it.name)) }
                 null
             }
             FailureKind.TRANSIENT -> {
-                local.registerFailedAttempt(id)
+                outbox.registerFailedAttempt(id)
                 PendingSyncResult.RETRY_LATER
             }
             FailureKind.AUTH -> PendingSyncResult.BLOCKED // nada é descartado

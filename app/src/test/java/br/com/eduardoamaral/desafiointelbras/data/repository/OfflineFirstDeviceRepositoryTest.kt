@@ -45,7 +45,7 @@ class OfflineFirstDeviceRepositoryTest {
         // Fonte remota real sobre a API falsa: os testes cobrem também a conversão de DTOs
         // e a tradução de erros HTTP feitas pela RetrofitDeviceRemoteDataSource.
         scheduler = FakeSyncScheduler()
-        repository = OfflineFirstDeviceRepository(RetrofitDeviceRemoteDataSource(api), local, scheduler)
+        repository = OfflineFirstDeviceRepository(RetrofitDeviceRemoteDataSource(api), local, local, scheduler)
     }
 
     private fun httpError(code: Int) = HttpException(Response.error<Any>(code, "".toResponseBody()))

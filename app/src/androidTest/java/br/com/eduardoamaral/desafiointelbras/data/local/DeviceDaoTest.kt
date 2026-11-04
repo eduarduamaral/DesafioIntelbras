@@ -267,4 +267,104 @@ class DeviceDaoTest {
 
         assertEquals(listOf("v9", "a1", "v1"), allIds())
     }
+
+    // ---- Criação e edição offline ----
+
+    @Test
+    fun criacaoOfflineApareceNoTopoEEntraNaFila() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+
+        dao.enqueueCreate(video("local-1", "Criado offline"), createdAt = 1)
+
+        assertEquals(listOf("local-1", "v1"), allIds())
+        assertEquals(SyncState.PENDING_CREATE.name, dao.getDeviceEntity("local-1")?.syncState)
+        assertEquals(OperationType.CREATE.name, dao.getPendingOperation("local-1")?.operation)
+    }
+
+    @Test
+    fun refreshNaoApagaItemCriadoOffline() = runTest {
+        dao.enqueueCreate(video("local-1", "Criado offline"), createdAt = 1)
+
+        // O servidor não conhece o item: nem a lista cheia nem a vazia podem apagá-lo.
+        dao.syncType("VIDEO", listOf(video("v1", "Do servidor")))
+        assertTrue("local-1" in allIds())
+        dao.syncType("VIDEO", emptyList())
+        assertEquals(listOf("local-1"), allIds())
+    }
+
+    @Test
+    fun confirmarCriacaoTrocaOIdMantendoFavoritoEPosicao() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.enqueueCreate(video("local-1", "Novo"), createdAt = 1)
+        dao.toggleFavorite("local-1")
+        dao.syncType("VIDEO", listOf(video("v1", "A"), video("v2", "B"))) // chega outro item depois
+
+        dao.confirmCreate("local-1", video("srv-9", "Novo"))
+
+        assertEquals(listOf("v2", "srv-9", "v1"), allIds()) // manteve a posição de quando foi criado
+        assertTrue(dao.isFavorite("srv-9"))
+        assertFalse(dao.isFavorite("local-1"))
+        assertEquals(null, dao.getDeviceEntity("local-1"))
+        assertEquals(SyncState.SYNCED.name, dao.getDeviceEntity("srv-9")?.syncState)
+        assertTrue(dao.getPendingOperations().isEmpty())
+    }
+
+    @Test
+    fun editarItemCriadoOfflineContinuaUmaCriacaoComOsDadosNovos() = runTest {
+        dao.enqueueCreate(video("local-1", "Nome antigo"), createdAt = 1)
+
+        assertTrue(dao.enqueueUpdate(video("local-1", "Nome novo"), createdAt = 2))
+
+        val operation = dao.getPendingOperation("local-1")!!
+        assertEquals(OperationType.CREATE.name, operation.operation)
+        assertEquals(1L, operation.createdAt)
+        assertEquals("Nome novo", dao.getDeviceEntity("local-1")?.name)
+        assertEquals(SyncState.PENDING_CREATE.name, dao.getDeviceEntity("local-1")?.syncState)
+    }
+
+    @Test
+    fun edicaoOfflineFicaNaFilaESobreviveAoRefresh() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+
+        assertTrue(dao.enqueueUpdate(video("v1", "Editado offline"), createdAt = 1))
+        dao.syncType("VIDEO", listOf(video("v1", "Versão do servidor")))
+
+        assertEquals("Editado offline", dao.getDeviceEntity("v1")?.name)
+        assertEquals(SyncState.PENDING_UPDATE.name, dao.getDeviceEntity("v1")?.syncState)
+        assertEquals(OperationType.UPDATE.name, dao.getPendingOperation("v1")?.operation)
+    }
+
+    @Test
+    fun editarDuasVezesMantemUmaOperacaoNaPosicaoOriginal() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.enqueueUpdate(video("v1", "B"), createdAt = 10)
+
+        dao.enqueueUpdate(video("v1", "C"), createdAt = 99)
+
+        assertEquals(10L, dao.getPendingOperations().single().createdAt)
+        assertEquals("C", dao.getDeviceEntity("v1")?.name)
+    }
+
+    @Test
+    fun naoEditaItemInexistenteNemComRemocaoPendente() = runTest {
+        assertFalse(dao.enqueueUpdate(video("nao-existe", "X"), createdAt = 1))
+
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.enqueueDelete("v1", createdAt = 1)
+        assertFalse(dao.enqueueUpdate(video("v1", "X"), createdAt = 2))
+        assertEquals(OperationType.DELETE.name, dao.getPendingOperation("v1")?.operation)
+    }
+
+    @Test
+    fun confirmarEdicaoGravaAVersaoDoServidorETiraDaFila() = runTest {
+        dao.syncType("VIDEO", listOf(video("v1", "A")))
+        dao.toggleFavorite("v1")
+        dao.enqueueUpdate(video("v1", "Editado"), createdAt = 1)
+
+        dao.confirmUpdate(video("v1", "Editado"))
+
+        assertEquals(SyncState.SYNCED.name, dao.getDeviceEntity("v1")?.syncState)
+        assertTrue(dao.isFavorite("v1"))
+        assertTrue(dao.getPendingOperations().isEmpty())
+    }
 }

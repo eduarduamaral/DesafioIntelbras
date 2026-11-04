@@ -74,10 +74,17 @@ abstract class DeviceDao {
     @Query("DELETE FROM devices WHERE id = :id")
     abstract suspend fun deleteById(id: String)
 
-    @Query("DELETE FROM devices WHERE type = :type AND id NOT IN (:ids)")
+    // Os dois DELETEs da sincronização poupam quem tem operação na fila: um item criado
+    // offline nunca vem na lista do servidor e seria apagado no primeiro refresh.
+    @Query(
+        """
+        DELETE FROM devices WHERE type = :type AND id NOT IN (:ids)
+          AND id NOT IN (SELECT device_id FROM pending_operations)
+        """,
+    )
     abstract suspend fun deleteByTypeExcept(type: String, ids: List<String>)
 
-    @Query("DELETE FROM devices WHERE type = :type")
+    @Query("DELETE FROM devices WHERE type = :type AND id NOT IN (SELECT device_id FROM pending_operations)")
     abstract suspend fun deleteByType(type: String)
 
     /**
@@ -85,9 +92,9 @@ abstract class DeviceDao {
      * atualiza/insere o que veio e remove o que sumiu. Cada tipo é sincronizado
      * separadamente porque vem de um endpoint diferente; se um falhar, o outro segue.
      *
-     * Itens com operação na fila não são sobrescritos: a versão local é a mais nova.
-     * Sem isso, um refresh que rodasse antes da fila enviar um DELETE "ressuscitaria"
-     * o item (o servidor ainda o tem e o upsert voltaria o estado para SYNCED).
+     * Itens com operação na fila não são sobrescritos nem apagados: a versão local é a mais
+     * nova. Sem isso, um refresh antes do envio "ressuscitaria" um item removido offline
+     * (o servidor ainda o tem), desfaria uma edição offline ou apagaria um item criado offline.
      *
      * Ordem: quem já existe mantém o sort_order; quem é novo recebe números seguidos, na
      * ordem da resposta (a API lista do mais antigo para o mais novo, então o último fica
@@ -180,6 +187,77 @@ abstract class DeviceDao {
             )
         }
         return true
+    }
+
+    /**
+     * Criação offline: grava o item com id temporário (vai para o topo da lista) e põe a
+     * criação na fila. O item fica visível e editável; só o servidor ainda não sabe dele.
+     */
+    @Transaction
+    open suspend fun enqueueCreate(device: DeviceEntity, createdAt: Long) {
+        upsert(device.copy(syncState = SyncState.PENDING_CREATE.name))
+        upsertPendingOperation(
+            PendingOperationEntity(
+                deviceId = device.id,
+                operation = OperationType.CREATE.name,
+                deviceType = device.type,
+                createdAt = createdAt,
+            ),
+        )
+    }
+
+    /**
+     * Edição offline, combinada com o que já estava na fila:
+     * - criação pendente + edição = continua uma criação, com os dados novos (a fila envia
+     *   a versão atual da linha, não uma cópia);
+     * - edição pendente + edição = continua uma edição só, na posição original da fila;
+     * - remoção pendente = não edita (o item já está escondido).
+     *
+     * @return false se o dispositivo não existe ou está com remoção pendente.
+     */
+    @Transaction
+    open suspend fun enqueueUpdate(device: DeviceEntity, createdAt: Long): Boolean {
+        val current = getDeviceEntity(device.id) ?: return false
+        val previous = getPendingOperation(device.id)
+        if (previous?.operation == OperationType.DELETE.name) return false
+        val keepsCreate = previous?.operation == OperationType.CREATE.name
+        val state = if (keepsCreate) SyncState.PENDING_CREATE else SyncState.PENDING_UPDATE
+        upsert(device.copy(syncState = state.name, sortOrder = current.sortOrder))
+        upsertPendingOperation(
+            PendingOperationEntity(
+                deviceId = device.id,
+                operation = if (keepsCreate) OperationType.CREATE.name else OperationType.UPDATE.name,
+                deviceType = current.type,
+                createdAt = previous?.createdAt ?: createdAt,
+            ),
+        )
+        return true
+    }
+
+    /**
+     * O servidor criou o item: troca o id temporário pelo definitivo numa transação, levando
+     * junto o favorito e a posição na lista. A linha nova entra antes de a antiga sair, para
+     * a chave estrangeira do favorito sempre ter para onde apontar.
+     */
+    @Transaction
+    open suspend fun confirmCreate(temporaryId: String, created: DeviceEntity) {
+        val old = getDeviceEntity(temporaryId)
+        upsertEntity(
+            created.copy(
+                syncState = SyncState.SYNCED.name,
+                sortOrder = old?.sortOrder ?: (maxSortOrder() + 1),
+            ),
+        )
+        if (isFavorite(temporaryId)) insertFavorite(FavoriteEntity(created.id))
+        deleteById(temporaryId) // o CASCADE apaga o favorito antigo
+        deletePendingOperation(temporaryId)
+    }
+
+    /** O servidor aceitou a edição: grava a versão dele e tira da fila. */
+    @Transaction
+    open suspend fun confirmUpdate(updated: DeviceEntity) {
+        upsert(updated.copy(syncState = SyncState.SYNCED.name))
+        deletePendingOperation(updated.id)
     }
 
     /** O servidor confirmou a remoção: apaga de vez (o CASCADE leva o favorito junto). */

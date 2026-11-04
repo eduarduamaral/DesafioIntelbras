@@ -26,24 +26,7 @@ interface DeviceLocalDataSource {
     suspend fun syncType(type: DeviceType, devices: List<Device>)
     suspend fun upsert(device: Device)
     suspend fun toggleFavorite(id: String)
-
-    // ---- Fila de operações pendentes ----
-
-    /** Esconde o dispositivo e põe a remoção na fila, numa transação. false se não existir. */
-    suspend fun enqueueDelete(id: String): Boolean
-    suspend fun pendingOperations(): List<PendingOperation>
-    fun observePendingCount(): Flow<Int>
-    suspend fun confirmDelete(id: String)
-    suspend fun rollbackDelete(id: String)
-    suspend fun registerFailedAttempt(id: String)
 }
-
-/** Operação na fila, já com tipos do app (sem strings do banco). */
-data class PendingOperation(
-    val deviceId: String,
-    val operation: OperationType,
-    val deviceType: DeviceType,
-)
 
 class RoomDeviceLocalDataSource @Inject constructor(
     private val dao: DeviceDao,
@@ -75,27 +58,6 @@ class RoomDeviceLocalDataSource @Inject constructor(
     override suspend fun upsert(device: Device) = dao.upsert(device.toEntity())
 
     override suspend fun toggleFavorite(id: String) = dao.toggleFavorite(id)
-
-    override suspend fun enqueueDelete(id: String): Boolean =
-        dao.enqueueDelete(id, createdAt = System.currentTimeMillis())
-
-    override suspend fun pendingOperations(): List<PendingOperation> =
-        dao.getPendingOperations().mapNotNull { entity ->
-            PendingOperation(
-                deviceId = entity.deviceId,
-                operation = OperationType.valueOf(entity.operation),
-                deviceType = DeviceType.entries.firstOrNull { it.name == entity.deviceType }
-                    ?: return@mapNotNull null,
-            )
-        }
-
-    override fun observePendingCount(): Flow<Int> = dao.observePendingCount()
-
-    override suspend fun confirmDelete(id: String) = dao.confirmDelete(id)
-
-    override suspend fun rollbackDelete(id: String) = dao.rollbackDelete(id)
-
-    override suspend fun registerFailedAttempt(id: String) = dao.incrementAttempts(id)
 
     /** Evita que "%" ou "_" digitados na busca virem curingas do LIKE. */
     private fun String.escapeLike(): String =

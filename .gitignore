@@ -13,3 +13,6 @@ local.properties
 *.keystore
 *.jks
 .env
+# Saída do build incluído com os convention plugins
+/build-logic/convention/build
+/build-logic/.kotlin

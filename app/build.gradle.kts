@@ -1,13 +1,12 @@
 import java.util.Properties
 
+// SDKs, Java, lint, detekt, Compose e Hilt vêm dos convention plugins (build-logic).
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.desafio.android.application)
+    alias(libs.plugins.desafio.android.compose)
+    alias(libs.plugins.desafio.hilt)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt)
     alias(libs.plugins.room)
-    alias(libs.plugins.detekt)
 }
 
 // O token da API NÃO é versionado: vem do local.properties (ignorado pelo Git)
@@ -22,18 +21,11 @@ fun secret(key: String, default: String = ""): String =
 
 android {
     namespace = "br.com.eduardoamaral.desafiointelbras"
-    compileSdk {
-        version = release(36)
-    }
 
     defaultConfig {
         applicationId = "br.com.eduardoamaral.desafiointelbras"
-        minSdk = 29
-        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
@@ -51,29 +43,9 @@ android {
             }
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
     buildFeatures {
-        compose = true
         buildConfig = true
     }
-    lint {
-        // Erro de lint quebra o build (e o CI); avisos aparecem no relatório.
-        abortOnError = true
-        checkDependencies = false
-        // Atualização de versões é decidida e testada à parte (ex.: Renovate/Dependabot),
-        // não como aviso de lint a cada build.
-        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
-    }
-}
-
-detekt {
-    // Parte do padrão do detekt e só sobrescreve o que está em config/detekt/detekt.yml.
-    buildUponDefaultConfig = true
-    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
-    parallel = true
 }
 
 room {
@@ -89,15 +61,11 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
 
-    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
 
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
     implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.hilt.work)
     ksp(libs.hilt.androidx.compiler)
@@ -118,14 +86,9 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.work.testing)
 
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.kotlinx.coroutines.test)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-
-    detektPlugins(libs.detekt.rules.ktlint)
 }

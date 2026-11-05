@@ -12,6 +12,8 @@ data class Device(
     val name: String,
     val details: DeviceDetails,
     val isFavorite: Boolean = false,
+    /** Criado ou editado sem conexão e ainda não confirmado pelo servidor. */
+    val isPendingSync: Boolean = false,
 ) {
     val type: DeviceType get() = details.type
 }

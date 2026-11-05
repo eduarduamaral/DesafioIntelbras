@@ -2,6 +2,7 @@ package br.com.eduardoamaral.desafiointelbras.data.mapper
 
 import br.com.eduardoamaral.desafiointelbras.data.local.DeviceEntity
 import br.com.eduardoamaral.desafiointelbras.data.local.DeviceWithFavorite
+import br.com.eduardoamaral.desafiointelbras.data.local.SyncState
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralRequest
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.VideoDeviceDto
@@ -65,7 +66,14 @@ fun Device.toEntity(): DeviceEntity = when (val d = details) {
 /** Retorna null se a linha estiver inconsistente (tipo desconhecido ou coluna obrigatória nula). */
 fun DeviceWithFavorite.toDomain(): Device? {
     val details = device.toDetails() ?: return null
-    return Device(id = device.id, name = device.name, details = details, isFavorite = isFavorite)
+    return Device(
+        id = device.id,
+        name = device.name,
+        details = details,
+        isFavorite = isFavorite,
+        // A view já esconde remoções pendentes; o que sobra pendente é criação ou edição.
+        isPendingSync = device.syncState != SyncState.SYNCED.name,
+    )
 }
 
 private fun DeviceEntity.toDetails(): DeviceDetails? = when (type) {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,6 +72,25 @@ private fun Modifier.groupBorder(
     }
 }
 
+@Composable
+private fun PendingSyncLabel() {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Spacer(Modifier.width(8.dp))
+    Icon(
+        imageVector = Icons.Outlined.CloudUpload,
+        contentDescription = null,
+        tint = color,
+        modifier = Modifier.size(14.dp),
+    )
+    Spacer(Modifier.width(4.dp))
+    Text(
+        text = stringResource(R.string.device_pending_sync),
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        maxLines = 1,
+    )
+}
+
 /** Texto de apoio da lista: serial para câmera, MAC formatado para alarme. */
 fun Device.subtitle(): String = when (val d = details) {
     is DeviceDetails.Video -> d.serial
@@ -120,12 +140,17 @@ fun DeviceRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = device.subtitle(),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = device.subtitle(),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // Item criado ou editado sem conexão: o texto também é lido pelo TalkBack.
+                    if (device.isPendingSync) PendingSyncLabel()
+                }
             }
             IconButton(onClick = onMoreClick) {
                 Icon(

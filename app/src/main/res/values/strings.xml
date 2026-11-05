@@ -25,6 +25,7 @@
     <string name="device_type_alarm">Dispositivo de alarme</string>
     <string name="device_kind_camera">Câmera</string>
     <string name="device_kind_alarm">Alarme</string>
+    <string name="device_pending_sync">Aguardando envio</string>
 
     <!-- Menu de ações -->
     <string name="action_info">Informações</string>

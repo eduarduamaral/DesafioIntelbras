@@ -6,8 +6,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -139,5 +141,14 @@ class DashboardScreenTest {
 
         composeRule.onNodeWithText(context.resources.getQuantityString(R.plurals.sync_offline_pending, 2, 2))
             .assertExists()
+    }
+
+    @Test
+    fun itemCriadoSemConexaoMostraAguardandoEnvio() {
+        setScreen(withDevices().copy(devices = listOf(camera.copy(isPendingSync = true), alarm)))
+
+        // Só o item pendente ganha a marca.
+        composeRule.onAllNodesWithText(context.getString(R.string.device_pending_sync), substring = true)
+            .assertCountEquals(1)
     }
 }

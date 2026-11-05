@@ -71,11 +71,11 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
 - A UI **só observa o Room** (`Flow`). Nenhuma tela lê direto da API.
 - `refresh()` primeiro **envia a fila de pendências** e depois busca **os dois endpoints em paralelo** (`async`), sincronizando cada tipo com `syncType`. Numa **única transação**, ele faz upsert do que veio e apaga o que sumiu do servidor. Se um endpoint falhar, o outro tipo é atualizado mesmo assim e o que falhou mantém o último sync.
 - Vídeo e alarme ficam numa **tabela única** com colunas específicas anuláveis. Assim listagem, busca e filtros são uma query só; o mapper garante que cada tipo tenha seus campos.
-- **Remover** é otimista e funciona sem rede (ver [Funcionamento offline](#funcionamento-offline)). **Criar e editar** chamam a API e, com sucesso, gravam a resposta no Room; a lista se atualiza sozinha.
+- **Criar, editar e remover funcionam sem rede** (ver [Funcionamento offline](#funcionamento-offline)). Com rede, criar e editar chamam a API primeiro e gravam a resposta no Room; a lista se atualiza sozinha.
 
 ### Funcionamento offline
 
-O app abre e mostra os dados sem rede, e a remoção funciona offline. O desenho segue o padrão **Outbox**: a mudança local e a entrada na fila são gravadas na mesma transação, e um worker envia a fila depois.
+O app abre e mostra os dados sem rede, e criar, editar e remover funcionam offline. O desenho segue o padrão **Outbox**: a mudança local e a entrada na fila são gravadas na mesma transação, e um worker envia a fila depois. A fila tem sua própria interface (`PendingOperationsLocalDataSource`), separada da que lê e grava dispositivos.
 
 ```
 Usuário remove ──▶ Room (transação):                 WorkManager (rede validada)
@@ -86,16 +86,22 @@ Usuário remove ──▶ Room (transação):                 WorkManager (rede 
 
 **Remoção otimista com soft delete.** O item some da lista na hora, mas a linha só é apagada quando o servidor confirma. Se o servidor recusar, o item volta, **com o favorito**, e o usuário é avisado. A view `device_with_favorite` filtra `PENDING_DELETE`, então todas as telas e o contador do cabeçalho obedecem sem código extra.
 
+**Criar e editar: online primeiro, fila sem rede.** Com rede, a chamada vai direto à API, e um 409 (serial ou MAC repetido) marca o campo no formulário na hora. Sem rede, ou com erro temporário, o item é gravado no banco e entra na fila; o formulário fecha com "Salvo. Será sincronizado quando houver conexão." O resultado é um `WriteResult` (`Synced` ou `Queued`), e a linha do item mostra "Aguardando envio" até o servidor confirmar.
+
+**Id temporário.** Um item criado offline recebe o id `local-<uuid>` e já aparece no topo da lista. Quando o POST dá certo, `confirmCreate` troca pelo id do servidor numa transação, levando junto o favorito e a posição. A fila não guarda cópia dos dados: envia a versão atual da linha, então criar e depois editar offline vira um POST só. Uma tela de edição aberta com o id antigo continua funcionando, porque o repositório lembra a troca.
+
 **Junção de operações do mesmo dispositivo.** A fila guarda no máximo uma operação por dispositivo (`device_id` é a chave):
 
 | Já na fila | Nova ação | Resultado |
 |---|---|---|
 | — | remover | `DELETE` na fila, item escondido |
-| `CREATE` (nunca chegou ao servidor) | remover | apaga a linha e tira da fila: nada a enviar |
+| — | criar / editar sem rede | `CREATE` / `UPDATE` na fila, item visível com "Aguardando envio" |
+| `CREATE` (nunca chegou ao servidor) | editar | continua `CREATE`, com os dados novos |
+| `CREATE` | remover | apaga a linha e tira da fila: nada a enviar |
+| `UPDATE` | editar | continua um `UPDATE` só, na posição original |
 | `UPDATE` | remover | vira só `DELETE` (editar algo que vai sumir é inútil) |
 | `DELETE` | remover | continua um só, mantendo a posição original na fila |
-
-As linhas `CREATE`/`UPDATE` já existem no modelo e nas regras (testadas no DAO) para quando criar e editar offline forem implementados.
+| `DELETE` | editar | recusado: o item já está escondido |
 
 **Envio.** `WorkManagerSyncScheduler` agenda um trabalho único (`APPEND_OR_REPLACE`) que só roda com **rede validada**, com backoff exponencial. Ele também é agendado na abertura do app, para retomar uma fila que sobrou. A fila é enviada **em ordem** (`created_at`); uma falha temporária interrompe a rodada para nenhuma operação "furar a fila".
 
@@ -105,10 +111,10 @@ As linhas `CREATE`/`UPDATE` já existem no modelo e nas regras (testadas no DAO)
 |---|---|---|
 | `TRANSIENT` | sem rede, timeout, 5xx, 429 | conta a tentativa, mantém na fila, `Result.retry()` |
 | `AUTH` | 401/403 | pausa a fila sem descartar nada (token precisa ser corrigido) |
-| `ALREADY_DONE` | 404 | confirma: o estado desejado já existe (**idempotência**) |
-| `REJECTED` | demais 4xx | desfaz a mudança local e avisa o usuário |
+| `ALREADY_DONE` | 404 | remoção: confirma, o estado desejado já existe (**idempotência**). Edição: o item foi removido em outro aparelho, sai da lista e avisa |
+| `REJECTED` | demais 4xx | desfaz a mudança local e avisa: remoção volta o item; criação descarta o item (409 diz que o serial/MAC já existe); edição sai da fila e a versão do servidor volta no próximo refresh |
 
-**Sem "ressurreição".** `syncType` não sobrescreve itens com operação na fila: um refresh que rode antes do envio não traz de volta o item removido offline.
+**Sem "ressurreição" nem sumiço.** `syncType` não sobrescreve nem apaga itens com operação na fila: um refresh antes do envio não traz de volta um item removido offline, não desfaz uma edição offline e não apaga um item criado offline (que o servidor ainda não conhece).
 
 **Concorrência.** Um `Mutex` no repositório serializa o worker, o `refresh` e as escritas na API. Sem ele, um `refresh` iniciado antes de um "adicionar" poderia terminar depois e apagar o item recém-criado.
 
@@ -116,11 +122,12 @@ As linhas `CREATE`/`UPDATE` já existem no modelo e nas regras (testadas no DAO)
 
 **Feedback ao usuário.**
 - Aviso fixo no cabeçalho, a partir de `NetworkMonitor` (`ConnectivityManager`, só conta como online uma rede com `INTERNET` e `VALIDATED`) e da contagem da fila: "Sem conexão", "Sem conexão. N alterações aguardando envio" ou "Enviando N alterações…". É um estado, não um evento, por isso não é Snackbar; o TalkBack anuncia a mudança (`liveRegion`).
-- Snackbar específico ao remover offline ("Será sincronizado quando houver conexão") e quando o servidor recusa uma remoção.
-- Criar/editar sem rede: "Nada foi salvo" e o formulário continua aberto, com os dados preenchidos.
+- Snackbar específico ao salvar ou remover offline ("Será sincronizado quando houver conexão") e para cada recusa do servidor, com o nome do dispositivo.
+- "Aguardando envio" na linha de cada item criado ou editado offline.
 
 **Limitações conhecidas**
-- **Criar e editar ainda exigem rede.** O caminho está preparado (`PENDING_CREATE`/`PENDING_UPDATE`), mas criar offline exige um id temporário trocado pelo do servidor depois, e editar offline exige resolver conflitos.
+- **Edição recusada mostra a versão local até o próximo refresh.** A fila sai e o aviso aparece na hora, mas os dados do servidor só voltam na próxima atualização da lista.
+- **Tela de informações aberta com o id temporário** mostra "não encontrado" depois que o item é enviado (a edição não tem esse problema).
 - **Última escrita vence.** A API não tem versão nem `updatedAt`, então duas edições do mesmo item em aparelhos diferentes não são detectadas: vale a última que chegar.
 
 ### Ordem da lista
@@ -195,7 +202,7 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 ## Pendências e melhorias
 
 - [x] Fila de operações offline para remoção (WorkManager + `pending_operations`)
-- [ ] Criar e editar offline (id temporário e resolução de conflitos)
+- [x] Criar e editar offline (id temporário trocado pelo do servidor; última escrita vence)
 - [ ] Sugestões para a API: `createdAt` (ordem real) e favoritos por usuário (sincronizar entre aparelhos)
 - [x] Testes de UI com Compose UI Test (dashboard e formulário)
 - [ ] Teste de ponta a ponta com Hilt (`HiltAndroidRule`) e API falsa (MockWebServer)

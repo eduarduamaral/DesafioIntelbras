@@ -153,18 +153,18 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource, PendingOperationsLocalD
 
     /** O que a lista mostra, na mesma ordem: sem remoções pendentes, mais recente primeiro. */
     val snapshot: List<Device>
-        get() = visible(devices.value, pending.value).withFavorites(favorites.value).newestFirst()
+        get() = visible(devices.value, pending.value).withState(favorites.value, pending.value).newestFirst()
     val pendingIds: Set<String> get() = pending.value.keys
     fun hasRow(id: String): Boolean = devices.value.any { it.id == id }
 
     override fun observeDevices(query: String, filter: DeviceFilter): Flow<List<Device>> =
         combine(devices, favorites, pending) { list, favs, pend ->
-            visible(list, pend).withFavorites(favs).newestFirst().applyFilter(query, filter)
+            visible(list, pend).withState(favs, pend).newestFirst().applyFilter(query, filter)
         }
 
     override fun observeDevice(id: String): Flow<Device?> =
         combine(devices, favorites, pending) { list, favs, pend ->
-            visible(list, pend).withFavorites(favs).firstOrNull { it.id == id }
+            visible(list, pend).withState(favs, pend).firstOrNull { it.id == id }
         }
 
     override fun observeCount(): Flow<Int> =
@@ -260,8 +260,9 @@ class FakeDeviceLocalDataSource : DeviceLocalDataSource, PendingOperationsLocalD
     private fun visible(list: List<Device>, pend: Map<String, PendingOperation>) =
         list.filterNot { pend[it.id]?.operation == OperationType.DELETE }
 
-    private fun List<Device>.withFavorites(favs: Set<String>) =
-        map { it.copy(isFavorite = it.id in favs) }
+    /** Favorito e "aguardando envio" calculados na leitura, como a view e o mapper fazem. */
+    private fun List<Device>.withState(favs: Set<String>, pend: Map<String, PendingOperation>) =
+        map { it.copy(isFavorite = it.id in favs, isPendingSync = it.id in pend) }
 }
 
 /** Estado da conexão controlado pelo teste. */

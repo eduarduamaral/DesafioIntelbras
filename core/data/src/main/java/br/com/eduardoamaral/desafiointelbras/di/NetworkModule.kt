@@ -2,66 +2,48 @@ package br.com.eduardoamaral.desafiointelbras.di
 
 import android.util.Log
 import br.com.eduardoamaral.desafiointelbras.core.data.BuildConfig
-import br.com.eduardoamaral.desafiointelbras.data.remote.AuthInterceptor
+import br.com.eduardoamaral.desafiointelbras.data.remote.ApiConfig
+import br.com.eduardoamaral.desafiointelbras.data.remote.ApiJson
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
+import br.com.eduardoamaral.desafiointelbras.data.remote.KtorDeviceApi
+import br.com.eduardoamaral.desafiointelbras.data.remote.createHttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
-import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    // Tag fixa para filtrar no Logcat: tag:DesafioHttp
     private const val HTTP_LOG_TAG = "DesafioHttp"
 
     @Provides
     @Singleton
-    fun provideJson(): Json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-        explicitNulls = false
-    }
+    fun provideJson(): Json = ApiJson
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .addInterceptor(AuthInterceptor(BuildConfig.API_TOKEN))
-        .apply {
-            if (BuildConfig.DEBUG) {
-                addInterceptor(
-                    // Tag fixa para filtrar no Logcat: tag:DesafioHttp
-                    HttpLoggingInterceptor { message -> Log.d(HTTP_LOG_TAG, message) }.apply {
-                        level = HttpLoggingInterceptor.Level.BODY
-                        redactHeader("Authorization")
-                    },
-                )
-            }
-        }
-        .build()
+    fun provideApiConfig(): ApiConfig = ApiConfig(
+        baseUrl = BuildConfig.API_BASE_URL,
+        token = BuildConfig.API_TOKEN,
+    )
 
     @Provides
     @Singleton
-    fun provideRetrofit(client: OkHttpClient, json: Json): Retrofit = Retrofit.Builder()
-        .baseUrl(BuildConfig.API_BASE_URL)
-        .client(client)
-        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-        .build()
+    fun provideHttpClient(config: ApiConfig, json: Json): HttpClient = createHttpClient(
+        engine = OkHttp.create(),
+        config = config,
+        json = json,
+        httpLog = if (BuildConfig.DEBUG) { message -> Log.d(HTTP_LOG_TAG, message) } else null,
+    )
 
     @Provides
     @Singleton
-    fun provideDeviceApi(retrofit: Retrofit): DeviceApi = retrofit.create(DeviceApi::class.java)
+    fun provideDeviceApi(client: HttpClient): DeviceApi = KtorDeviceApi(client)
 }
-
-private const val TIMEOUT_SECONDS = 15L

@@ -33,9 +33,9 @@ import javax.inject.Singleton
 
 /**
  * Orquestra as duas fontes: a UI lê sempre da [local] (fonte única de verdade) e as escritas
- * passam pela [remote] antes de serem refletidas no banco. Não conhece Retrofit, DTOs nem Room.
+ * passam pela [remote] antes de serem refletidas no banco. Não conhece Ktor, DTOs nem Room.
  *
- * Room e Retrofit (funções suspend) já são main-safe, por isso não há withContext(IO) aqui.
+ * Room e Ktor (funções suspend) já são main-safe, por isso não há withContext(IO) aqui.
  *
  * O [mutex] serializa as operações que escrevem no banco a partir da API (refresh, criar,
  * editar e o envio da fila). Sem ele, um refresh iniciado antes de um "criar" poderia

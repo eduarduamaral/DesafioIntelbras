@@ -1,7 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.domain.model
 
 /**
- * Modelo de domínio usado pela UI. Não conhece Room nem Retrofit.
+ * Modelo de domínio usado pela UI. Não conhece Room nem Ktor.
  *
  * Na API, vídeo e alarme são recursos diferentes (/video-devices e /alarm-centrals),
  * com campos diferentes. Aqui viram um único Device com [details] específico por tipo,

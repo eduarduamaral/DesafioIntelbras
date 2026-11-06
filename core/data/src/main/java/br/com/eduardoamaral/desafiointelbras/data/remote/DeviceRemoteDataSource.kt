@@ -26,7 +26,7 @@ interface DeviceRemoteDataSource {
     suspend fun delete(id: String, type: DeviceType): Outcome<Unit>
 }
 
-class RetrofitDeviceRemoteDataSource @Inject constructor(
+class ApiDeviceRemoteDataSource @Inject constructor(
     private val api: DeviceApi,
 ) : DeviceRemoteDataSource {
 

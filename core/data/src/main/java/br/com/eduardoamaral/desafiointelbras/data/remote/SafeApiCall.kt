@@ -2,15 +2,17 @@ package br.com.eduardoamaral.desafiointelbras.data.remote
 
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.network.sockets.SocketTimeoutException
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.serialization.ContentConvertException
 import kotlinx.coroutines.CancellationException
+import kotlinx.io.IOException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import retrofit2.HttpException
-import java.io.IOException
-import java.net.SocketTimeoutException
 
 /**
  * Executa uma chamada de rede e traduz exceções em [AppError].
@@ -18,19 +20,27 @@ import java.net.SocketTimeoutException
  * (ex.: usuário saiu da tela no meio da requisição).
  */
 // A exceção vira um AppError de propósito: o domínio só precisa saber o tipo da falha, e o
-// detalhe técnico já aparece no log do OkHttp (tag DesafioHttp) nos builds de debug.
-@Suppress("SwallowedException")
+// detalhe técnico já aparece no log do Ktor (tag DesafioHttp) nos builds de debug.
+// Os timeouts vêm antes de IOException porque são subclasses dela.
+@Suppress("SwallowedException", "CyclomaticComplexMethod")
 suspend fun <T> safeApiCall(block: suspend () -> T): Outcome<T> =
     try {
         Outcome.Success(block())
     } catch (e: CancellationException) {
         throw e
+    } catch (e: HttpStatusException) {
+        Outcome.Failure(httpCodeToError(e.code, e.body))
+    } catch (e: HttpRequestTimeoutException) {
+        Outcome.Failure(AppError.Timeout)
+    } catch (e: ConnectTimeoutException) {
+        Outcome.Failure(AppError.Timeout)
     } catch (e: SocketTimeoutException) {
         Outcome.Failure(AppError.Timeout)
     } catch (e: IOException) {
         Outcome.Failure(AppError.Network)
-    } catch (e: HttpException) {
-        Outcome.Failure(httpCodeToError(e.code(), e.response()?.errorBody()?.string()))
+    } catch (e: ContentConvertException) {
+        // Resposta 2xx com JSON fora do contrato (o Ktor embrulha a SerializationException).
+        Outcome.Failure(AppError.Unknown)
     } catch (e: SerializationException) {
         Outcome.Failure(AppError.Unknown)
     }

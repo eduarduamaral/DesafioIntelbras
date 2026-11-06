@@ -5,8 +5,8 @@ import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDa
 import br.com.eduardoamaral.desafiointelbras.data.local.RoomDeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.RoomPendingOperationsLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.network.ConnectivityNetworkMonitor
+import br.com.eduardoamaral.desafiointelbras.data.remote.ApiDeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceRemoteDataSource
-import br.com.eduardoamaral.desafiointelbras.data.remote.RetrofitDeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.repository.OfflineFirstDeviceRepository
 import br.com.eduardoamaral.desafiointelbras.data.sync.SyncScheduler
 import br.com.eduardoamaral.desafiointelbras.data.sync.WorkManagerSyncScheduler
@@ -33,7 +33,7 @@ abstract class DataModule {
     ): PendingOperationsLocalDataSource
 
     @Binds
-    abstract fun bindDeviceRemoteDataSource(impl: RetrofitDeviceRemoteDataSource): DeviceRemoteDataSource
+    abstract fun bindDeviceRemoteDataSource(impl: ApiDeviceRemoteDataSource): DeviceRemoteDataSource
 
     @Binds
     abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler

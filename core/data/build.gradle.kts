@@ -1,6 +1,6 @@
 import java.util.Properties
 
-// Implementação do domínio: Room, Retrofit, fila de pendências e WorkManager.
+// Implementação do domínio: Room, Ktor, fila de pendências e WorkManager.
 // As features não dependem deste módulo; só o :app, que monta o grafo do Hilt.
 plugins {
     alias(libs.plugins.desafio.android.library)
@@ -50,9 +50,11 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.kotlinx.serialization)
-    implementation(libs.okhttp.logging)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.work.runtime.ktx)
@@ -61,6 +63,7 @@ dependencies {
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.work.testing)
+    testImplementation(libs.ktor.client.mock)
 
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.kotlinx.coroutines.test)

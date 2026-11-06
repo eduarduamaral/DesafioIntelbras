@@ -2,13 +2,12 @@ package br.com.eduardoamaral.desafiointelbras.data.remote
 
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.test.runTest
-import okhttp3.ResponseBody.Companion.toResponseBody
+import kotlinx.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import retrofit2.HttpException
-import retrofit2.Response
 
 class SafeApiCallTest {
 
@@ -18,12 +17,21 @@ class SafeApiCallTest {
             {"statusCode":400,"error":"Bad Request","message":["serial must be uppercase","password too short"]}
         """.trimIndent()
 
-        val result = safeApiCall { throw HttpException(Response.error<Any>(400, body.toResponseBody())) }
+        val result = safeApiCall { throw HttpStatusException(400, body) }
 
         assertEquals(
             Outcome.Failure(AppError.InvalidData("serial must be uppercase; password too short")),
             result,
         )
+    }
+
+    @Test
+    fun `timeout e falta de rede viram erros diferentes`() = runTest {
+        assertEquals(
+            Outcome.Failure(AppError.Timeout),
+            safeApiCall { throw HttpRequestTimeoutException("video-devices", 15_000L) },
+        )
+        assertEquals(Outcome.Failure(AppError.Network), safeApiCall { throw IOException("offline") })
     }
 
     @Test

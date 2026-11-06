@@ -1,7 +1,8 @@
 package br.com.eduardoamaral.desafiointelbras.data.repository
 
 import br.com.eduardoamaral.desafiointelbras.data.local.TemporaryIds
-import br.com.eduardoamaral.desafiointelbras.data.remote.RetrofitDeviceRemoteDataSource
+import br.com.eduardoamaral.desafiointelbras.data.remote.ApiDeviceRemoteDataSource
+import br.com.eduardoamaral.desafiointelbras.data.remote.HttpStatusException
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.VideoDeviceDto
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
@@ -21,14 +22,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import retrofit2.HttpException
-import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstDeviceRepositoryTest {
@@ -46,12 +44,12 @@ class OfflineFirstDeviceRepositoryTest {
         api = FakeDeviceApi()
         local = FakeDeviceLocalDataSource()
         // Fonte remota real sobre a API falsa: os testes cobrem também a conversão de DTOs
-        // e a tradução de erros HTTP feitas pela RetrofitDeviceRemoteDataSource.
+        // e a tradução de erros HTTP feitas pela ApiDeviceRemoteDataSource.
         scheduler = FakeSyncScheduler()
-        repository = OfflineFirstDeviceRepository(RetrofitDeviceRemoteDataSource(api), local, local, scheduler)
+        repository = OfflineFirstDeviceRepository(ApiDeviceRemoteDataSource(api), local, local, scheduler)
     }
 
-    private fun httpError(code: Int) = HttpException(Response.error<Any>(code, "".toResponseBody()))
+    private fun httpError(code: Int) = HttpStatusException(code)
 
     @Test
     fun `refresh junta videos e alarmes no banco local`() = runTest {

@@ -59,7 +59,7 @@ MVVM com camadas separadas e fluxo de dados unidirecional:
 UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (domínio)
      ▲                         │                    │
      └──── StateFlow<UiState> ◀┘          ┌─────────┴─────────┐
-                                     Room (local)        Retrofit (remoto)
+                                     Room (local)          Ktor (remoto)
                                    fonte de verdade     sincroniza o local
 ```
 
@@ -76,7 +76,7 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
             └──────┬──────────┘                    │
                    ▼                               ▼
                :core:ui                       :core:data
-   (tema, componentes, UserMessageBus,  (Room, Retrofit, fila offline,
+   (tema, componentes, UserMessageBus,  (Room, Ktor, fila offline,   
     textos comuns, tradução de erros)    WorkManager, módulos Hilt)
                    │                               │
                    └──────────────┬────────────────┘
@@ -115,8 +115,8 @@ Os pacotes não mudaram com a modularização (só `R` e `BuildConfig` ganharam 
 |---|---|
 | `domain` (`:core:domain`) | Modelos puros (`Device` + `DeviceDetails` por tipo, `DeviceInput`, `Outcome`, `AppError`), regras de validação (`DeviceValidator`) e a interface `DeviceRepository`. Não conhece Android. |
 | `data/local` (`:core:data`) | Room: entidades, DAO, `DeviceLocalDataSource`. |
-| `data/remote` (`:core:data`) | `DeviceRemoteDataSource`: esconde os dois recursos da API, os DTOs e a tradução de erros (`safeApiCall`), devolvendo modelos de domínio. Implementada com Retrofit (`DeviceApi`, `AuthInterceptor`). |
-| `data/repository` (`:core:data`) | `OfflineFirstDeviceRepository`: só orquestra as duas fontes (lê do Room, escreve via fonte remota e reflete no Room, com `Mutex`). Não conhece Retrofit, DTOs nem Room. |
+| `data/remote` (`:core:data`) | `DeviceRemoteDataSource`: esconde os dois recursos da API, os DTOs e a tradução de erros (`safeApiCall`), devolvendo modelos de domínio. Implementada com Ktor: `DeviceApi` (os endpoints) e `createHttpClient` (URL base, token, JSON, timeout e status de erro como `HttpStatusException`). O engine vem de fora: OkHttp no Android e `MockEngine` nos testes. |
+| `data/repository` (`:core:data`) | `OfflineFirstDeviceRepository`: só orquestra as duas fontes (lê do Room, escreve via fonte remota e reflete no Room, com `Mutex`). Não conhece Ktor, DTOs nem Room. |
 | `data/sync` (`:core:data`) | Fila offline: `SyncScheduler` (WorkManager) e `SyncPendingOperationsWorker`. |
 | `data/network` (`:core:data`) | `ConnectivityNetworkMonitor`: implementa o `NetworkMonitor` do domínio, estado da conexão como `Flow`. |
 | `di` (`:core:data`) | Módulos Hilt da camada de dados. |
@@ -239,7 +239,7 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 | Navigation Compose (rotas type-safe) | Navegação com argumentos tipados |
 | Hilt | Injeção de dependência padrão no Android, integrada a ViewModel/Navigation |
 | Room | Persistência com `Flow` reativo, transações e verificação de SQL em tempo de compilação |
-| Retrofit + OkHttp + kotlinx.serialization | Cliente HTTP; serialização sem reflexão |
+| Ktor (engine OkHttp) + kotlinx.serialization | Cliente HTTP multiplataforma, pronto para o iOS (engine Darwin); serialização sem reflexão |
 | Coroutines/Flow | Assincronismo (requisito) |
 | WorkManager + `hilt-work` | Envio da fila offline com restrição de rede, backoff e sobrevivência a reinícios |
 | JUnit + kotlinx-coroutines-test | Testes de ViewModel e repositório com fakes |

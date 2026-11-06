@@ -5,6 +5,7 @@ import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
+import br.com.eduardoamaral.desafiointelbras.data.remote.HttpStatusException
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralRequest
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.ListResponse
@@ -19,10 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import okhttp3.ResponseBody.Companion.toResponseBody
-import retrofit2.HttpException
-import retrofit2.Response
-import java.io.IOException
+import kotlinx.io.IOException
 
 /**
  * Banco local em memória, com as mesmas regras do DeviceDao (testadas com SQLite real em
@@ -236,7 +234,7 @@ class FakeDeviceApi : DeviceApi {
 
     private fun conflict() = httpError(409)
 
-    private fun httpError(code: Int) = HttpException(Response.error<Any>(code, "".toResponseBody()))
+    private fun httpError(code: Int) = HttpStatusException(code)
 
     companion object {
         val NETWORK_ERROR = IOException("offline")

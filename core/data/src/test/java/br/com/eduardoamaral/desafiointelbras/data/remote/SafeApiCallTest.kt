@@ -1,10 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.data.remote
 
-import br.com.eduardoamaral.desafiointelbras.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
-import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
-import br.com.eduardoamaral.desafiointelbras.ui.common.toUserMessage
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -41,17 +38,5 @@ class SafeApiCallTest {
         assertNull(extractServerMessage("<html>Bad Request</html>"))
         assertNull(extractServerMessage("""{"error":"Bad Request"}"""))
         assertEquals(AppError.InvalidData(null), httpCodeToError(400, "nada"))
-    }
-
-    @Test
-    fun `snackbar mostra o motivo do servidor quando existe`() {
-        assertEquals(
-            UserMessage(R.string.error_invalid_data_detail, isError = true, formatArgs = listOf("Invalid MAC")),
-            AppError.InvalidData("Invalid MAC").toUserMessage(),
-        )
-        assertEquals(
-            UserMessage(R.string.error_invalid_data, isError = true),
-            AppError.InvalidData(null).toUserMessage(),
-        )
     }
 }

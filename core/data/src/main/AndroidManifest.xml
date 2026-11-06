@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- As permissões ficam com quem usa: o manifesto do app recebe estas no merge. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Para o NetworkMonitor saber se há internet (aviso de offline e fila de pendências). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+</manifest>

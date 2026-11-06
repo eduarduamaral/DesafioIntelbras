@@ -82,6 +82,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 # Só para módulos Kotlin puro: na mesma versão do Kotlin embutido no AGP 9
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -93,6 +94,7 @@ detekt = { id = "dev.detekt", version.ref = "detekt" }
 
 # Convention plugins do projeto (build-logic), sem versão: vêm do build incluído
 desafio-android-application = { id = "desafio.android.application" }
+desafio-android-library = { id = "desafio.android.library" }
 desafio-android-compose = { id = "desafio.android.compose" }
 desafio-hilt = { id = "desafio.hilt" }
 desafio-detekt = { id = "desafio.detekt" }

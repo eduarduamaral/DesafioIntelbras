@@ -2,9 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Para o NetworkMonitor saber se há internet (aviso de offline e fila de pendências). -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- As permissões de rede vêm do manifesto do :core:data (merge). -->
 
     <!-- A API usa HTTP puro; liberamos cleartext apenas para o host dela (ver network_security_config). -->
     <application

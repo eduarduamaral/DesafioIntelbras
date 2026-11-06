@@ -1,7 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.di
 
 import android.util.Log
-import br.com.eduardoamaral.desafiointelbras.BuildConfig
+import br.com.eduardoamaral.desafiointelbras.core.data.BuildConfig
 import br.com.eduardoamaral.desafiointelbras.data.remote.AuthInterceptor
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
 import dagger.Module

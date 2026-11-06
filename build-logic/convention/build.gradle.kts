@@ -30,6 +30,10 @@ gradlePlugin {
             id = libs.plugins.desafio.android.application.get().pluginId
             implementationClass = "AndroidApplicationConventionPlugin"
         }
+        register("androidLibrary") {
+            id = libs.plugins.desafio.android.library.get().pluginId
+            implementationClass = "AndroidLibraryConventionPlugin"
+        }
         register("androidCompose") {
             id = libs.plugins.desafio.android.compose.get().pluginId
             implementationClass = "AndroidComposeConventionPlugin"

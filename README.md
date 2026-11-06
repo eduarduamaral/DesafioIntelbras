@@ -30,9 +30,17 @@ Cada recurso tem `GET` (lista em `{ count, data }`), `POST`, `PATCH /{id}` e `DE
 Testes:
 
 ```bash
-./gradlew testDebugUnitTest          # ViewModels, repositório, fila offline, worker, regras de estado
-./gradlew connectedDebugAndroidTest  # Room com SQLite real (DAO, fila, migrações) e telas com Compose UI Test (precisa de emulador/dispositivo)
+# ViewModels, repositório, fila offline, worker, validação e regras de estado
+./gradlew testDebugUnitTest :core:domain:test :core:testing:test
+
+# Room com SQLite real (DAO, fila, migrações) e telas com Compose UI Test (precisa de emulador/dispositivo)
+./gradlew connectedDebugAndroidTest
+
+# Tudo de uma vez, como antes de cada commit
+./gradlew detekt lintDebug testDebugUnitTest :core:domain:test :core:testing:test connectedDebugAndroidTest
 ```
+
+`:core:domain` e `:core:testing` são módulos Kotlin puros, sem variantes Android, então a tarefa deles é `test`, e não `testDebugUnitTest`. Os relatórios ficam em `<módulo>/build/reports/`.
 
 Análise estática (também roda no CI):
 
@@ -55,16 +63,66 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
                                    fonte de verdade     sincroniza o local
 ```
 
-| Pacote | Responsabilidade |
+### Módulos
+
+```
+                         :app
+          (Application, MainActivity, AppNavHost, grafo do Hilt)
+            │                 │                    │
+            ▼                 ▼                    │
+  :feature:dashboard   :feature:device             │
+     (lista)        (formulário, informações)      │
+            │                 │                    │
+            └──────┬──────────┘                    │
+                   ▼                               ▼
+               :core:ui                       :core:data
+   (tema, componentes, UserMessageBus,  (Room, Retrofit, fila offline,
+    textos comuns, tradução de erros)    WorkManager, módulos Hilt)
+                   │                               │
+                   └──────────────┬────────────────┘
+                                  ▼
+                            :core:domain
+             (modelos, validação, DeviceRepository, NetworkMonitor)
+                         Kotlin puro, sem Android
+
+  :core:testing → fakes (FakeDeviceRepository, FakeNetworkMonitor...) e MainDispatcherRule,
+                  usados só nos testes das features e do :core:data
+```
+
+Regras que a estrutura garante (um import que as viole não compila, porque o módulo não está nas dependências):
+
+- **Uma feature não conhece `:core:data` nem outra feature.** As telas falam só com a interface `DeviceRepository` do domínio; quem entrega a implementação é o Hilt, montado no `:app`.
+- **A navegação entre features passa pelo `:app`.** Cada feature expõe suas rotas e o trecho do grafo (`dashboardScreen`, `deviceFormScreen`, `navigateToDeviceForm`...). A lista só avisa "editar o item X", e o `AppNavHost` traduz isso numa rota da feature de dispositivo.
+- **`:core:domain` não tem Android.** É um módulo `kotlin-jvm`, o que já o deixa pronto para virar `commonMain` num projeto KMP.
+- **Cada módulo tem seus próprios textos.** Os comuns (cancelar, tentar de novo, erros de rede e de validação) ficam no `:core:ui` e são importados como `CoreUiR`.
+
+A configuração repetida dos módulos fica em **convention plugins** (`build-logic/`, um *included build*). Assim, o `build.gradle.kts` de uma feature tem só o plugin e o namespace:
+
+| Plugin | O que aplica |
 |---|---|
-| `domain` | Modelos puros (`Device` + `DeviceDetails` por tipo, `DeviceInput`, `Outcome`, `AppError`), regras de validação (`DeviceValidator`) e a interface `DeviceRepository`. Não conhece Android. |
-| `data/local` | Room: entidades, DAO, `DeviceLocalDataSource`. |
-| `data/remote` | `DeviceRemoteDataSource`: esconde os dois recursos da API, os DTOs e a tradução de erros (`safeApiCall`), devolvendo modelos de domínio. Implementada com Retrofit (`DeviceApi`, `AuthInterceptor`). |
-| `data/repository` | `OfflineFirstDeviceRepository`: só orquestra as duas fontes (lê do Room, escreve via fonte remota e reflete no Room, com `Mutex`). Não conhece Retrofit, DTOs nem Room. |
-| `data/sync` | Fila offline: `SyncScheduler` (WorkManager) e `SyncPendingOperationsWorker`. |
-| `data/network` | `NetworkMonitor`: estado da conexão como `Flow`. |
-| `di` | Módulos Hilt. |
-| `ui` | Telas (`dashboard`, `device/form`, `device/details`), componentes reutilizáveis, navegação e tema. |
+| `desafio.android.application` | AGP de app, SDKs, Java 11, regras do Lint e detekt |
+| `desafio.android.library` | O mesmo para bibliotecas Android, mais JUnit e o runner de testes instrumentados |
+| `desafio.android.compose` | Compose ligado, BOM, preview e ferramentas de debug |
+| `desafio.hilt` | Hilt + KSP |
+| `desafio.android.feature` | biblioteca + Compose + Hilt, `:core:ui`, `:core:domain`, ViewModel, Navigation, serialização das rotas e `:core:testing` nos testes |
+| `desafio.jvm.library` | Kotlin/JVM puro, para `:core:domain` e `:core:testing` |
+| `desafio.detekt` | detekt com as regras do ktlint e o `config/detekt/detekt.yml` compartilhado |
+
+Os pacotes não mudaram com a modularização (só `R` e `BuildConfig` ganharam o namespace do módulo), por isso a tabela abaixo continua valendo:
+
+| Pacote (módulo) | Responsabilidade |
+|---|---|
+| `domain` (`:core:domain`) | Modelos puros (`Device` + `DeviceDetails` por tipo, `DeviceInput`, `Outcome`, `AppError`), regras de validação (`DeviceValidator`) e a interface `DeviceRepository`. Não conhece Android. |
+| `data/local` (`:core:data`) | Room: entidades, DAO, `DeviceLocalDataSource`. |
+| `data/remote` (`:core:data`) | `DeviceRemoteDataSource`: esconde os dois recursos da API, os DTOs e a tradução de erros (`safeApiCall`), devolvendo modelos de domínio. Implementada com Retrofit (`DeviceApi`, `AuthInterceptor`). |
+| `data/repository` (`:core:data`) | `OfflineFirstDeviceRepository`: só orquestra as duas fontes (lê do Room, escreve via fonte remota e reflete no Room, com `Mutex`). Não conhece Retrofit, DTOs nem Room. |
+| `data/sync` (`:core:data`) | Fila offline: `SyncScheduler` (WorkManager) e `SyncPendingOperationsWorker`. |
+| `data/network` (`:core:data`) | `ConnectivityNetworkMonitor`: implementa o `NetworkMonitor` do domínio, estado da conexão como `Flow`. |
+| `di` (`:core:data`) | Módulos Hilt da camada de dados. |
+| `ui/theme`, `ui/components`, `ui/common` (`:core:ui`) | Tema, componentes reutilizáveis, `UserMessageBus` e tradução de `AppError` em texto. |
+| `ui/dashboard` (`:feature:dashboard`) | Lista, busca, filtros, menu de ações e aviso de sincronização. |
+| `ui/device` (`:feature:device`) | Formulário de cadastro/edição e tela de informações. |
+| `ui/navigation` (`:app`) | `AppNavHost`, que liga as rotas das features. |
 
 ### Single source of truth
 
@@ -157,7 +215,7 @@ Isso está coberto por `DeviceDaoTest` (SQLite real em memória) e `OfflineFirst
 
 ### Migrações do banco
 
-Os esquemas são exportados em `app/schemas` e todas as migrações são `AutoMigration` do Room:
+Os esquemas são exportados em `core/data/schemas` e todas as migrações são `AutoMigration` do Room:
 
 | Versão | Mudança |
 |---|---|
@@ -197,7 +255,7 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 - **Exclusão com 404 conta como sucesso**: o estado desejado (item não existe) foi alcançado. Isso torna o reenvio da fila idempotente.
 - **Cleartext HTTP** liberado só para o host da API (`network_security_config.xml`).
 - **Foco verde no campo de busca (desvio do guia)**: no Figma a busca focada só ganha borda cinza, o que deixa o foco quase invisível (pouco contraste, ruim para acessibilidade). Usei o mesmo verde (`#00B26B`) dos campos do formulário para o feedback ser claro e consistente no app inteiro. A lupa também fica verde no foco, seguindo a regra de "ícone ativo" da Iconografia do guia.
-- **Módulo único por enquanto**: a separação é por pacote, pensada para virar módulos (`:core:data`, `:feature:dashboard`...) sem refatorar.
+- **Modularização por camada e por feature**: `:core:*` separa domínio, dados e UI comum; `:feature:*` separa as telas. Ganhos: build incremental (mexer numa tela não recompila os dados), dependências proibidas viram erro de compilação e cada feature é testada isolada. Custo: mais arquivos de build, que os convention plugins mantêm curtos.
 
 ## Pendências e melhorias
 
@@ -207,5 +265,5 @@ O `AppDatabaseMigrationTest` cria o banco como era em cada versão, com dados e 
 - [x] Testes de UI com Compose UI Test (dashboard e formulário)
 - [ ] Teste de ponta a ponta com Hilt (`HiltAndroidRule`) e API falsa (MockWebServer)
 - [x] detekt (com ktlint) e Android Lint no CI
-- [ ] Modularização
+- [x] Modularização (`:core:domain`, `:core:data`, `:core:ui`, `:core:testing`, `:feature:dashboard`, `:feature:device`)
 - [ ] KMP na camada de domínio/dados (Room KMP + Ktor)

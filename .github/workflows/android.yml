@@ -30,8 +30,10 @@ jobs:
         env:
           API_TOKEN: ${{ secrets.API_TOKEN }}
 
+      # testDebugUnitTest cobre os módulos Android; :core:domain e :core:testing são Kotlin
+      # puro (sem variantes), e lá a tarefa se chama só "test".
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest :core:domain:test :core:testing:test
         env:
           API_TOKEN: ${{ secrets.API_TOKEN }}
 
@@ -41,11 +43,12 @@ jobs:
           API_TOKEN: ${{ secrets.API_TOKEN }}
 
       # Sempre publica, para quem avaliar ver o resultado da análise mesmo com o CI verde.
+      # Um relatório por módulo (app, core/*, feature/*).
       - name: Upload lint reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lint-reports
           path: |
-            app/build/reports/detekt/
-            app/build/reports/lint-results-debug.html
+            **/build/reports/detekt/
+            **/build/reports/lint-results-debug.html

@@ -30,10 +30,10 @@ jobs:
         env:
           API_TOKEN: ${{ secrets.API_TOKEN }}
 
-      # testDebugUnitTest cobre os módulos Android; :core:domain e :core:testing são Kotlin
-      # puro (sem variantes), e lá a tarefa se chama só "test".
+      # testDebugUnitTest cobre os módulos Android. :core:domain é KMP: no Linux roda o
+      # alvo jvm (jvmTest); os alvos iOS só compilam no Mac. :core:testing é Kotlin/JVM ("test").
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest :core:domain:test :core:testing:test
+        run: ./gradlew testDebugUnitTest :core:domain:jvmTest :core:testing:test
         env:
           API_TOKEN: ${{ secrets.API_TOKEN }}
 

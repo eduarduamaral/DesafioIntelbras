@@ -31,16 +31,16 @@ Testes:
 
 ```bash
 # ViewModels, repositório, fila offline, worker, validação e regras de estado
-./gradlew testDebugUnitTest :core:domain:test :core:testing:test
+./gradlew testDebugUnitTest :core:domain:jvmTest :core:testing:test
 
 # Room com SQLite real (DAO, fila, migrações) e telas com Compose UI Test (precisa de emulador/dispositivo)
 ./gradlew connectedDebugAndroidTest
 
 # Tudo de uma vez, como antes de cada commit
-./gradlew detekt lintDebug testDebugUnitTest :core:domain:test :core:testing:test connectedDebugAndroidTest
+./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:testing:test connectedDebugAndroidTest
 ```
 
-`:core:domain` e `:core:testing` são módulos Kotlin puros, sem variantes Android, então a tarefa deles é `test`, e não `testDebugUnitTest`. Os relatórios ficam em `<módulo>/build/reports/`.
+`:core:domain` é Kotlin Multiplatform: `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. `:core:testing` é Kotlin/JVM, então a tarefa dele é `test`. Os relatórios ficam em `<módulo>/build/reports/`.
 
 Análise estática (também roda no CI):
 
@@ -83,7 +83,7 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
                                   ▼
                             :core:domain
              (modelos, validação, DeviceRepository, NetworkMonitor)
-                         Kotlin puro, sem Android
+                  Kotlin Multiplatform (jvm + iOS)
 
   :core:testing → fakes (FakeDeviceRepository, FakeNetworkMonitor...) e MainDispatcherRule,
                   usados só nos testes das features e do :core:data
@@ -93,7 +93,7 @@ Regras que a estrutura garante (um import que as viole não compila, porque o m�
 
 - **Uma feature não conhece `:core:data` nem outra feature.** As telas falam só com a interface `DeviceRepository` do domínio; quem entrega a implementação é o Hilt, montado no `:app`.
 - **A navegação entre features passa pelo `:app`.** Cada feature expõe suas rotas e o trecho do grafo (`dashboardScreen`, `deviceFormScreen`, `navigateToDeviceForm`...). A lista só avisa "editar o item X", e o `AppNavHost` traduz isso numa rota da feature de dispositivo.
-- **`:core:domain` não tem Android.** É um módulo `kotlin-jvm`, o que já o deixa pronto para virar `commonMain` num projeto KMP.
+- **`:core:domain` não tem Android.** É um módulo Kotlin Multiplatform (alvos jvm, iosArm64 e iosSimulatorArm64): o mesmo código e os mesmos testes valem para Android e iOS.
 - **Cada módulo tem seus próprios textos.** Os comuns (cancelar, tentar de novo, erros de rede e de validação) ficam no `:core:ui` e são importados como `CoreUiR`.
 
 A configuração repetida dos módulos fica em **convention plugins** (`build-logic/`, um *included build*). Assim, o `build.gradle.kts` de uma feature tem só o plugin e o namespace:
@@ -105,7 +105,8 @@ A configuração repetida dos módulos fica em **convention plugins** (`build-lo
 | `desafio.android.compose` | Compose ligado, BOM, preview e ferramentas de debug |
 | `desafio.hilt` | Hilt + KSP |
 | `desafio.android.feature` | biblioteca + Compose + Hilt, `:core:ui`, `:core:domain`, ViewModel, Navigation, serialização das rotas e `:core:testing` nos testes |
-| `desafio.jvm.library` | Kotlin/JVM puro, para `:core:domain` e `:core:testing` |
+| `desafio.kmp.library` | Kotlin Multiplatform sem Android (jvm, iosArm64, iosSimulatorArm64), `kotlin.test` em `commonTest` e detekt lendo `src/<sourceSet>` |
+| `desafio.jvm.library` | Kotlin/JVM puro, para `:core:testing` |
 | `desafio.detekt` | detekt com as regras do ktlint e o `config/detekt/detekt.yml` compartilhado |
 
 Os pacotes não mudaram com a modularização (só `R` e `BuildConfig` ganharam o namespace do módulo), por isso a tabela abaixo continua valendo:

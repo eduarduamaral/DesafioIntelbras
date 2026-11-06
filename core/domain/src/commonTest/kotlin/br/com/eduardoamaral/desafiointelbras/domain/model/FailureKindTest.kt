@@ -1,7 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.domain.model
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /** A classificação decide se a fila tenta de novo, pausa, confirma ou desfaz. */
 class FailureKindTest {
@@ -9,7 +9,7 @@ class FailureKindTest {
     @Test
     fun `sem rede timeout 5xx e 429 sao temporarios`() {
         listOf(AppError.Network, AppError.Timeout, AppError.Server(500), AppError.Server(503), AppError.Server(429))
-            .forEach { assertEquals(it.toString(), FailureKind.TRANSIENT, it.failureKind()) }
+            .forEach { assertEquals(FailureKind.TRANSIENT, it.failureKind(), it.toString()) }
     }
 
     @Test
@@ -25,6 +25,6 @@ class FailureKindTest {
     @Test
     fun `recusas definitivas desfazem a mudanca local`() {
         listOf(AppError.Conflict, AppError.InvalidData("x"), AppError.Server(418), AppError.Unknown)
-            .forEach { assertEquals(it.toString(), FailureKind.REJECTED, it.failureKind()) }
+            .forEach { assertEquals(FailureKind.REJECTED, it.failureKind(), it.toString()) }
     }
 }

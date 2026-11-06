@@ -1,5 +1,5 @@
 [versions]
-agp = "9.5.0"
+agp = "9.5.1"
 kotlin = "2.2.10"
 ksp = "2.3.6"
 coreKtx = "1.17.0"
@@ -23,6 +23,7 @@ detekt = "2.0.0-alpha.6"
 espressoCore = "3.7.0"
 
 [libraries]
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
@@ -87,6 +88,8 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 # Só para módulos Kotlin puro: na mesma versão do Kotlin embutido no AGP 9
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+# Módulos compartilhados com o iOS (KMP)
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 room = { id = "androidx.room", version.ref = "room" }
@@ -100,3 +103,4 @@ desafio-android-feature = { id = "desafio.android.feature" }
 desafio-hilt = { id = "desafio.hilt" }
 desafio-detekt = { id = "desafio.detekt" }
 desafio-jvm-library = { id = "desafio.jvm.library" }
+desafio-kmp-library = { id = "desafio.kmp.library" }

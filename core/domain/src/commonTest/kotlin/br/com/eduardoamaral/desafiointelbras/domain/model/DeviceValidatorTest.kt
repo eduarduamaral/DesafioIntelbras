@@ -1,9 +1,9 @@
 package br.com.eduardoamaral.desafiointelbras.domain.model
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DeviceValidatorTest {
 
@@ -37,9 +37,9 @@ class DeviceValidatorTest {
     fun `senha de alarme precisa ter 4 ou 6 digitos numericos`() {
         listOf("123", "12345", "1234567", "12a4").forEach { password ->
             assertEquals(
-                password,
                 ValidationError.INVALID_ALARM_PASSWORD,
                 DeviceValidator.validateAlarmPassword(password),
+                password,
             )
         }
     }

@@ -46,6 +46,10 @@ gradlePlugin {
             id = libs.plugins.desafio.hilt.get().pluginId
             implementationClass = "HiltConventionPlugin"
         }
+        register("kmpLibrary") {
+            id = libs.plugins.desafio.kmp.library.get().pluginId
+            implementationClass = "KmpLibraryConventionPlugin"
+        }
         register("jvmLibrary") {
             id = libs.plugins.desafio.jvm.library.get().pluginId
             implementationClass = "JvmLibraryConventionPlugin"

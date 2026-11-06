@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Textos usados pelos componentes e pelas mensagens de erro, comuns a todas as telas. -->
+    <string name="navigate_back">Voltar</string>
+    <string name="close">Fechar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="retry">Tentar novamente</string>
+    <string name="device_type_video">Dispositivo de vídeo</string>
+    <string name="device_type_alarm">Dispositivo de alarme</string>
+    <string name="device_kind_camera">Câmera</string>
+    <string name="device_kind_alarm">Alarme</string>
+    <string name="form_type_video">Vídeo</string>
+    <string name="form_type_alarm">Alarme</string>
+    <string name="form_error_required">Campo obrigatório</string>
+    <!-- O limite é sempre maior que 1 (13 ou 50), então não precisa de plural. -->
+    <string name="form_error_too_long" tools:ignore="PluralsCandidate">Máximo de %1$d caracteres</string>
+    <string name="form_error_invalid_mac">MAC inválido: use 12 caracteres hexadecimais</string>
+    <string name="form_error_invalid_alarm_password">A senha deve ter 4 ou 6 dígitos</string>
+    <string name="form_error_already_exists">Já cadastrado em outro dispositivo</string>
+    <string name="password_show">Mostrar senha</string>
+    <string name="password_hide">Ocultar senha</string>
+    <string name="error_network">Sem conexão. Mostrando os últimos dados salvos.</string>
+    <string name="error_timeout">O servidor demorou para responder. Tente novamente.</string>
+    <string name="error_unauthorized">Acesso negado: token inválido ou ausente.</string>
+    <string name="error_not_found">Dispositivo não encontrado no servidor.</string>
+    <string name="error_conflict">Número de série ou MAC já cadastrado em outro dispositivo.</string>
+    <string name="error_invalid_data">O servidor recusou os dados. Revise os campos.</string>
+    <string name="error_invalid_data_detail">O servidor recusou os dados: %1$s</string>
+    <string name="error_server">Erro no servidor. Tente novamente mais tarde.</string>
+    <string name="error_unknown">Algo deu errado. Tente novamente.</string>
+</resources>

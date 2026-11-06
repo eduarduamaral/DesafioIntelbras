@@ -17,6 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 @RunWith(AndroidJUnit4::class)
 class DeviceFormScreenTest {
@@ -52,7 +53,7 @@ class DeviceFormScreenTest {
         composeRule.onNodeWithText(context.getString(R.string.form_serial_label)).assertExists()
         composeRule.onNodeWithText(context.getString(R.string.form_username_label)).assertExists()
 
-        composeRule.onNodeWithText(context.getString(R.string.form_type_alarm)).performClick()
+        composeRule.onNodeWithText(context.getString(CoreUiR.string.form_type_alarm)).performClick()
         assertEquals(listOf(DeviceType.ALARM), types)
     }
 
@@ -68,9 +69,9 @@ class DeviceFormScreenTest {
             ),
         )
 
-        composeRule.onNodeWithText(context.getString(R.string.form_error_required)).assertExists()
+        composeRule.onNodeWithText(context.getString(CoreUiR.string.form_error_required)).assertExists()
         composeRule.onNodeWithText(
-            context.getString(R.string.form_error_too_long, DeviceValidator.SERIAL_MAX_LENGTH),
+            context.getString(CoreUiR.string.form_error_too_long, DeviceValidator.SERIAL_MAX_LENGTH),
         ).assertExists()
     }
 

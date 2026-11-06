@@ -1,6 +1,6 @@
 package br.com.eduardoamaral.desafiointelbras.ui.common
 
-import br.com.eduardoamaral.desafiointelbras.R
+import br.com.eduardoamaral.desafiointelbras.core.ui.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import org.junit.Assert.assertEquals
 import org.junit.Test

@@ -55,6 +55,7 @@ import br.com.eduardoamaral.desafiointelbras.ui.components.kindRes
 import br.com.eduardoamaral.desafiointelbras.ui.components.labelRes
 import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
 import kotlinx.coroutines.launch
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 @Composable
 fun DeviceDetailsRoute(
@@ -77,7 +78,7 @@ fun DeviceDetailsScreen(state: DeviceDetailsUiState, onBack: () -> Unit) {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.navigate_back),
+                            contentDescription = stringResource(CoreUiR.string.navigate_back),
                         )
                     }
                 },

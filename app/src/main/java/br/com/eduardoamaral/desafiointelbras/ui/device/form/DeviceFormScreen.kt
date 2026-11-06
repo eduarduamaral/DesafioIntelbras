@@ -41,6 +41,7 @@ import br.com.eduardoamaral.desafiointelbras.ui.components.AppSnackbarHost
 import br.com.eduardoamaral.desafiointelbras.ui.components.AppTextField
 import br.com.eduardoamaral.desafiointelbras.ui.components.LoadingView
 import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 @Composable
 fun DeviceFormRoute(
@@ -98,7 +99,7 @@ fun DeviceFormScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = actions.onBack) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close))
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(CoreUiR.string.close))
                     }
                 },
                 // "Salvar" como ação de texto no topo, como no wireframe.

@@ -26,6 +26,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 /**
  * Testa a tela "sem estado": recebe um DashboardUiState pronto e registra os callbacks.
@@ -129,8 +130,8 @@ class DashboardScreenTest {
         setScreen(DashboardUiState(isLoadingLocal = false, error = AppError.Unauthorized))
 
         composeRule.onNodeWithText(context.getString(R.string.error_title)).assertExists()
-        composeRule.onNodeWithText(context.getString(R.string.error_unauthorized)).assertExists()
-        composeRule.onNodeWithText(context.getString(R.string.retry)).performClick()
+        composeRule.onNodeWithText(context.getString(CoreUiR.string.error_unauthorized)).assertExists()
+        composeRule.onNodeWithText(context.getString(CoreUiR.string.retry)).performClick()
 
         assertEquals(1, refreshes)
     }

@@ -21,7 +21,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import br.com.eduardoamaral.desafiointelbras.R
+import br.com.eduardoamaral.desafiointelbras.core.ui.R
 
 /**
  * Campo de texto padrão do app: label com "*" para obrigatórios e mensagem de erro

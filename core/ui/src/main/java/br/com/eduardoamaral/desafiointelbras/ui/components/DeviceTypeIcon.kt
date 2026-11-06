@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import br.com.eduardoamaral.desafiointelbras.R
+import br.com.eduardoamaral.desafiointelbras.core.ui.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 
 /**

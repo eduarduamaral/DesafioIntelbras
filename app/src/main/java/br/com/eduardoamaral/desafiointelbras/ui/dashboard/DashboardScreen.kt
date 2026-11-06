@@ -59,6 +59,7 @@ import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.DeviceSearc
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.SyncStatusBanner
 import br.com.eduardoamaral.desafiointelbras.ui.dashboard.components.itemPosition
 import br.com.eduardoamaral.desafiointelbras.ui.theme.DesafioIntelbrasTheme
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 /** Versão "com estado": liga o ViewModel à tela. */
 @Composable
@@ -156,7 +157,7 @@ fun DashboardScreen(
                         icon = Icons.Outlined.CloudOff,
                         title = stringResource(R.string.error_title),
                         message = stringResource(content.error.messageRes()),
-                        actionLabel = stringResource(R.string.retry),
+                        actionLabel = stringResource(CoreUiR.string.retry),
                         onAction = onRefresh,
                     )
                 }
@@ -192,7 +193,7 @@ fun DashboardScreen(
             title = stringResource(R.string.remove_dialog_title),
             message = stringResource(R.string.remove_dialog_message),
             confirmLabel = stringResource(R.string.remove_confirm),
-            dismissLabel = stringResource(R.string.cancel),
+            dismissLabel = stringResource(CoreUiR.string.cancel),
             onConfirm = {
                 deleteDeviceId = null
                 onDeleteDevice(deleteDevice.id)

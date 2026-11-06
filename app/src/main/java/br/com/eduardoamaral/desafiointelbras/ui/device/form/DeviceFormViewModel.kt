@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 data class DeviceFormUiState(
     val isEditing: Boolean = false,
@@ -73,7 +74,7 @@ class DeviceFormViewModel @Inject constructor(
             val device = repository.observeDevice(id).first()
             if (device == null) {
                 // Removido em outra tela/sincronização enquanto o form abria.
-                messageBus.send(UserMessage(R.string.error_not_found, isError = true))
+                messageBus.send(UserMessage(CoreUiR.string.error_not_found, isError = true))
                 _uiState.update { it.copy(isLoading = false, shouldClose = true) } // fecha a tela
                 return@launch
             }

@@ -1,7 +1,7 @@
 package br.com.eduardoamaral.desafiointelbras.ui.common
 
 import androidx.annotation.StringRes
-import br.com.eduardoamaral.desafiointelbras.R
+import br.com.eduardoamaral.desafiointelbras.core.ui.R
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.ValidationError
 

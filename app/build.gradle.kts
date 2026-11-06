@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:domain"))
     // Só o :app conhece a camada de dados: ele monta o grafo do Hilt e inicia o WorkManager.
     implementation(project(":core:data"))
+    implementation(project(":core:ui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

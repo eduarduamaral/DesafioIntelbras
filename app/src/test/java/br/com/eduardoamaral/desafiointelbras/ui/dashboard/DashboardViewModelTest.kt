@@ -23,6 +23,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import br.com.eduardoamaral.desafiointelbras.core.ui.R as CoreUiR
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModelTest {
@@ -98,7 +99,7 @@ class DashboardViewModelTest {
 
         val viewModel = createViewModel()
 
-        assertEquals(UserMessage(R.string.error_network, isError = true), messages.single())
+        assertEquals(UserMessage(CoreUiR.string.error_network, isError = true), messages.single())
         assertEquals(2, viewModel.uiState.value.devices.size)
         assertEquals(DashboardContent.Devices, viewModel.uiState.value.content)
     }

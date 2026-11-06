@@ -5,12 +5,12 @@ import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDa
 import br.com.eduardoamaral.desafiointelbras.data.local.RoomDeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.RoomPendingOperationsLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.network.ConnectivityNetworkMonitor
-import br.com.eduardoamaral.desafiointelbras.data.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.remote.RetrofitDeviceRemoteDataSource
 import br.com.eduardoamaral.desafiointelbras.data.repository.OfflineFirstDeviceRepository
 import br.com.eduardoamaral.desafiointelbras.data.sync.SyncScheduler
 import br.com.eduardoamaral.desafiointelbras.data.sync.WorkManagerSyncScheduler
+import br.com.eduardoamaral.desafiointelbras.domain.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import dagger.Binds
 import dagger.Module

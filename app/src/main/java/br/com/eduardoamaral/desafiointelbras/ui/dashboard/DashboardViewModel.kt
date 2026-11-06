@@ -3,12 +3,12 @@ package br.com.eduardoamaral.desafiointelbras.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.eduardoamaral.desafiointelbras.R
-import br.com.eduardoamaral.desafiointelbras.data.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
+import br.com.eduardoamaral.desafiointelbras.domain.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessage
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus

@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Desafio Intelbras"
 include(":app")
+include(":core:domain")

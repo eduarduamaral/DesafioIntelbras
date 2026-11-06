@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import br.com.eduardoamaral.desafiointelbras.domain.network.NetworkMonitor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -12,11 +13,6 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import javax.inject.Inject
 import javax.inject.Singleton
-
-/** Se o aparelho tem internet agora. Interface para os ViewModels serem testados com um fake. */
-interface NetworkMonitor {
-    val isOnline: Flow<Boolean>
-}
 
 /**
  * Observa a rede padrão do sistema. Considera online só a rede com internet VALIDADA:

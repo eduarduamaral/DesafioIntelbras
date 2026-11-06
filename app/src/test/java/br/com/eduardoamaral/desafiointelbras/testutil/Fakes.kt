@@ -4,7 +4,6 @@ import br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource
 import br.com.eduardoamaral.desafiointelbras.data.local.OperationType
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperation
 import br.com.eduardoamaral.desafiointelbras.data.local.PendingOperationsLocalDataSource
-import br.com.eduardoamaral.desafiointelbras.data.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.data.remote.DeviceApi
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralRequest
@@ -23,6 +22,7 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult
 import br.com.eduardoamaral.desafiointelbras.domain.model.SyncEvent
 import br.com.eduardoamaral.desafiointelbras.domain.model.WriteResult
 import br.com.eduardoamaral.desafiointelbras.domain.model.toDevice
+import br.com.eduardoamaral.desafiointelbras.domain.network.NetworkMonitor
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow

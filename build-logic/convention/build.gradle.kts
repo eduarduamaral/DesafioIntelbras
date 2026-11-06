@@ -21,6 +21,7 @@ dependencies {
     // compileOnly: as classes vêm do build principal em tempo de execução (root build.gradle.kts).
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.detekt.gradlePlugin)
+    compileOnly(libs.kotlin.gradlePlugin)
 }
 
 gradlePlugin {
@@ -36,6 +37,10 @@ gradlePlugin {
         register("hilt") {
             id = libs.plugins.desafio.hilt.get().pluginId
             implementationClass = "HiltConventionPlugin"
+        }
+        register("jvmLibrary") {
+            id = libs.plugins.desafio.jvm.library.get().pluginId
+            implementationClass = "JvmLibraryConventionPlugin"
         }
         register("detekt") {
             id = libs.plugins.desafio.detekt.get().pluginId

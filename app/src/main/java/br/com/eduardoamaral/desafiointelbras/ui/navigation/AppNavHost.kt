@@ -8,13 +8,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalResources
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import br.com.eduardoamaral.desafiointelbras.ui.common.UserMessageBus
 import br.com.eduardoamaral.desafiointelbras.ui.components.AppSnackbarVisuals
-import br.com.eduardoamaral.desafiointelbras.ui.dashboard.DashboardRoute
-import br.com.eduardoamaral.desafiointelbras.ui.device.details.DeviceDetailsRoute
-import br.com.eduardoamaral.desafiointelbras.ui.device.form.DeviceFormRoute
+import br.com.eduardoamaral.desafiointelbras.ui.dashboard.navigation.DashboardDestination
+import br.com.eduardoamaral.desafiointelbras.ui.dashboard.navigation.dashboardScreen
+import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.deviceDetailsScreen
+import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.deviceFormScreen
+import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.navigateToDeviceDetails
+import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.navigateToDeviceForm
 
 @Composable
 fun AppNavHost(messageBus: UserMessageBus) {
@@ -36,23 +38,19 @@ fun AppNavHost(messageBus: UserMessageBus) {
         }
     }
 
+    // As features não se conhecem: a lista só avisa "abrir formulário/detalhes" e o app
+    // traduz isso em navegação para as rotas da feature de dispositivo.
     NavHost(navController = navController, startDestination = DashboardDestination) {
-        composable<DashboardDestination> {
-            DashboardRoute(
-                snackbarHostState = snackbarHostState,
-                onAddDevice = { navController.navigate(DeviceFormDestination()) },
-                onEditDevice = { id -> navController.navigate(DeviceFormDestination(id)) },
-                onOpenDetails = { id -> navController.navigate(DeviceDetailsDestination(id)) },
-            )
-        }
-        composable<DeviceFormDestination> {
-            DeviceFormRoute(
-                snackbarHostState = snackbarHostState,
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable<DeviceDetailsDestination> {
-            DeviceDetailsRoute(onBack = { navController.popBackStack() })
-        }
+        dashboardScreen(
+            snackbarHostState = snackbarHostState,
+            onAddDevice = { navController.navigateToDeviceForm() },
+            onEditDevice = { id -> navController.navigateToDeviceForm(id) },
+            onOpenDetails = { id -> navController.navigateToDeviceDetails(id) },
+        )
+        deviceFormScreen(
+            snackbarHostState = snackbarHostState,
+            onBack = { navController.popBackStack() },
+        )
+        deviceDetailsScreen(onBack = { navController.popBackStack() })
     }
 }

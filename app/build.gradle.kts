@@ -3,7 +3,6 @@ plugins {
     alias(libs.plugins.desafio.android.application)
     alias(libs.plugins.desafio.android.compose)
     alias(libs.plugins.desafio.hilt)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -30,31 +29,22 @@ dependencies {
     // Só o :app conhece a camada de dados: ele monta o grafo do Hilt e inicia o WorkManager.
     implementation(project(":core:data"))
     implementation(project(":core:ui"))
+    // O app só monta a navegação: cada tela vive no seu módulo de feature.
+    implementation(project(":feature:dashboard"))
+    implementation(project(":feature:device"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
 
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
 
-    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.hilt.work)
 
     implementation(libs.work.runtime.ktx)
 
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
-
-    testImplementation(project(":core:testing"))
-
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.kotlinx.coroutines.test)
 }

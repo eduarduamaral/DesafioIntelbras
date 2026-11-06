@@ -1,0 +1,54 @@
+<resources>
+    <!-- Dashboard -->
+    <string name="dashboard_title">Meus dispositivos</string>
+    <plurals name="devices_count">
+        <item quantity="one">%d dispositivo</item>
+        <item quantity="other">%d dispositivos</item>
+    </plurals>
+    <string name="search_placeholder">Pesquisar</string>
+    <string name="search_clear">Limpar busca</string>
+    <string name="filter_all">Todos</string>
+    <string name="filter_favorites">Favoritos</string>
+    <string name="filter_cameras">Câmeras</string>
+    <string name="filter_alarms">Alarmes</string>
+    <string name="add_device">Adicionar</string>
+    <string name="device_options">Opções de %1$s</string>
+    <string name="device_pending_sync">Aguardando envio</string>
+
+    <!-- Menu de ações -->
+    <string name="action_info">Informações</string>
+    <string name="action_edit">Editar dispositivo</string>
+    <string name="action_favorite">Marcar favorito</string>
+    <string name="action_unfavorite">Desmarcar favorito</string>
+    <string name="action_remove">Remover dispositivo</string>
+
+    <!-- Remoção -->
+    <string name="remove_dialog_title">Remover dispositivo?</string>
+    <string name="remove_dialog_message">Você tem certeza que deseja remover este dispositivo?</string>
+    <string name="remove_confirm">Confirmar</string>
+
+    <!-- Estados -->
+    <string name="empty_title">Nenhum dispositivo cadastrado</string>
+    <string name="empty_message">Toque em Adicionar para cadastrar o primeiro.</string>
+    <string name="empty_filtered_title">Nada encontrado</string>
+    <string name="empty_filtered_message">Tente outro nome ou filtro.</string>
+    <string name="error_title">Não foi possível carregar</string>
+
+    <!-- Sincronização -->
+    <string name="sync_offline">Sem conexão. Mostrando os últimos dados salvos.</string>
+    <plurals name="sync_offline_pending">
+        <item quantity="one">Sem conexão. %d alteração aguardando envio.</item>
+        <item quantity="other">Sem conexão. %d alterações aguardando envio.</item>
+    </plurals>
+    <plurals name="sync_pending">
+        <item quantity="one">Enviando %d alteração…</item>
+        <item quantity="other">Enviando %d alterações…</item>
+    </plurals>
+    <string name="msg_device_removed">Dispositivo removido</string>
+    <string name="msg_device_removed_offline">Dispositivo removido. Será sincronizado quando houver conexão.</string>
+    <string name="msg_delete_rejected">O servidor recusou a remoção de %1$s. Ele voltou para a lista.</string>
+    <string name="msg_create_rejected_conflict">%1$s não foi criado: número de série ou MAC já cadastrado.</string>
+    <string name="msg_create_rejected">O servidor recusou %1$s, criado sem conexão. Ele foi descartado.</string>
+    <string name="msg_update_rejected">O servidor recusou a edição de %1$s. A versão dele volta na próxima atualização.</string>
+    <string name="msg_removed_on_server">%1$s foi removido em outro aparelho.</string>
+</resources>

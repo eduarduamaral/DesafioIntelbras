@@ -1,0 +1,27 @@
+<resources>
+    <!-- Formulário -->
+    <string name="form_title_add">Novo dispositivo</string>
+    <string name="form_title_edit">Editar dispositivo</string>
+    <string name="form_save">Salvar</string>
+    <string name="form_type_label">Tipo de dispositivo</string>
+    <string name="form_name_label">Nome</string>
+    <string name="form_serial_label">Número de série</string>
+    <string name="form_username_label">Usuário</string>
+    <string name="form_password_label">Senha</string>
+    <string name="form_mac_label">MAC Address</string>
+    <string name="form_mac_hint_counter">Ex.: 1A:2B:3C:4D:5E:6F · %1$d/%2$d</string>
+    <string name="form_serial_number_hint_counter">Ex.: 1A2B3C4D5E6F9 · %1$d/%2$d</string>
+    <string name="form_alarm_password_hint">4 ou 6 dígitos numéricos</string>
+
+    <!-- Informações -->
+    <string name="details_title">Informações</string>
+    <string name="details_type">Tipo</string>
+    <string name="details_not_found">Dispositivo não encontrado</string>
+    <string name="copy_value">Copiar %1$s</string>
+    <string name="copied">Copiado</string>
+
+    <!-- Snackbars -->
+    <string name="msg_device_created">Dispositivo adicionado</string>
+    <string name="msg_device_updated">Dispositivo atualizado</string>
+    <string name="msg_saved_offline">Salvo. Será sincronizado quando houver conexão.</string>
+</resources>

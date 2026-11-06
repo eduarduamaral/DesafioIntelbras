@@ -96,6 +96,7 @@ detekt = { id = "dev.detekt", version.ref = "detekt" }
 desafio-android-application = { id = "desafio.android.application" }
 desafio-android-library = { id = "desafio.android.library" }
 desafio-android-compose = { id = "desafio.android.compose" }
+desafio-android-feature = { id = "desafio.android.feature" }
 desafio-hilt = { id = "desafio.hilt" }
 desafio-detekt = { id = "desafio.detekt" }
 desafio-jvm-library = { id = "desafio.jvm.library" }

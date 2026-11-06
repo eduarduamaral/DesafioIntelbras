@@ -38,6 +38,10 @@ gradlePlugin {
             id = libs.plugins.desafio.android.compose.get().pluginId
             implementationClass = "AndroidComposeConventionPlugin"
         }
+        register("androidFeature") {
+            id = libs.plugins.desafio.android.feature.get().pluginId
+            implementationClass = "AndroidFeatureConventionPlugin"
+        }
         register("hilt") {
             id = libs.plugins.desafio.hilt.get().pluginId
             implementationClass = "HiltConventionPlugin"

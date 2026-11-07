@@ -17,6 +17,7 @@ import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.deviceDetailsS
 import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.deviceFormScreen
 import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.navigateToDeviceDetails
 import br.com.eduardoamaral.desafiointelbras.ui.device.navigation.navigateToDeviceForm
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun AppNavHost(messageBus: UserMessageBus) {
@@ -27,8 +28,11 @@ fun AppNavHost(messageBus: UserMessageBus) {
     val resources by rememberUpdatedState(LocalResources.current)
 
     // Um coletor só, no topo: a mensagem aparece mesmo se a tela que a gerou já saiu da pilha.
+    // collectLatest: uma mensagem nova substitui a que está na tela. Com collect, ela esperaria
+    // a anterior sumir (um erro fica 10 s), e o "Dispositivo adicionado" chegaria atrasado,
+    // depois de um "Já cadastrado" que não vale mais.
     LaunchedEffect(messageBus) {
-        messageBus.messages.collect { message ->
+        messageBus.messages.collectLatest { message ->
             snackbarHostState.showSnackbar(
                 AppSnackbarVisuals(
                     message = resources.getString(message.textRes, *message.formatArgs.toTypedArray()),

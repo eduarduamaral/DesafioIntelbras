@@ -13,6 +13,11 @@ class FailureKindTest {
     }
 
     @Test
+    fun `resposta ilegivel nao desfaz porque o servidor pode ter aplicado`() {
+        assertEquals(FailureKind.TRANSIENT, AppError.Unknown.failureKind())
+    }
+
+    @Test
     fun `token invalido pausa em vez de descartar`() {
         assertEquals(FailureKind.AUTH, AppError.Unauthorized.failureKind())
     }
@@ -24,7 +29,7 @@ class FailureKindTest {
 
     @Test
     fun `recusas definitivas desfazem a mudanca local`() {
-        listOf(AppError.Conflict, AppError.InvalidData("x"), AppError.Server(418), AppError.Unknown)
+        listOf(AppError.Conflict, AppError.InvalidData("x"), AppError.Server(418))
             .forEach { assertEquals(FailureKind.REJECTED, it.failureKind(), it.toString()) }
     }
 }

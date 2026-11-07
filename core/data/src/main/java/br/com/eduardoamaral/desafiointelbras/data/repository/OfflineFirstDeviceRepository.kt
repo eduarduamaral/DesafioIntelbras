@@ -22,10 +22,10 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.toDevice
 import br.com.eduardoamaral.desafiointelbras.domain.model.toInput
 import br.com.eduardoamaral.desafiointelbras.domain.repository.DeviceRepository
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -61,8 +61,11 @@ class OfflineFirstDeviceRepository(
     private val resolvedIds = mutableMapOf<String, String>()
 
     // Buffer: o worker não fica esperando a UI consumir o aviso.
-    private val _syncEvents = MutableSharedFlow<SyncEvent>(extraBufferCapacity = 8)
-    override val syncEvents: Flow<SyncEvent> = _syncEvents.asSharedFlow()
+    // Channel (e não SharedFlow): uma recusa encontrada pelo worker com a lista fechada fica
+    // guardada até a lista voltar a ouvir. Num SharedFlow sem ninguém ouvindo ela se perderia
+    // e o item sumiria sem explicação. Cada aviso é entregue uma vez, a um único ouvinte.
+    private val _syncEvents = Channel<SyncEvent>(Channel.BUFFERED)
+    override val syncEvents: Flow<SyncEvent> = _syncEvents.receiveAsFlow()
 
     override fun observePendingCount(): Flow<Int> = outbox.observePendingCount()
 
@@ -202,7 +205,7 @@ class OfflineFirstDeviceRepository(
             // Recusado (ex.: 409, serial já existe): o item só existia no app e é descartado.
             FailureKind.REJECTED, FailureKind.ALREADY_DONE -> {
                 outbox.discardCreate(temporaryId)
-                _syncEvents.tryEmit(SyncEvent.CreateRejected(device.name, error))
+                _syncEvents.trySend(SyncEvent.CreateRejected(device.name, error))
                 null
             }
         }
@@ -231,12 +234,12 @@ class OfflineFirstDeviceRepository(
             FailureKind.AUTH -> PendingSyncResult.BLOCKED
             FailureKind.ALREADY_DONE -> { // 404: removido no servidor (em outro aparelho)
                 outbox.discardCreate(id) // apaga a linha, o favorito e a operação
-                _syncEvents.tryEmit(SyncEvent.RemovedOnServer(device.name))
+                _syncEvents.trySend(SyncEvent.RemovedOnServer(device.name))
                 null
             }
             FailureKind.REJECTED -> { // sai da fila; o próximo refresh traz a versão do servidor
                 outbox.dropPendingOperation(id)
-                _syncEvents.tryEmit(SyncEvent.UpdateRejected(device.name))
+                _syncEvents.trySend(SyncEvent.UpdateRejected(device.name))
                 null
             }
         }
@@ -257,7 +260,7 @@ class OfflineFirstDeviceRepository(
             }
             FailureKind.REJECTED -> { // recusado de vez: o item volta para a lista
                 outbox.rollbackDelete(id)
-                local.getDevice(id)?.let { _syncEvents.tryEmit(SyncEvent.DeleteRejected(it.name)) }
+                local.getDevice(id)?.let { _syncEvents.trySend(SyncEvent.DeleteRejected(it.name)) }
                 null
             }
             FailureKind.TRANSIENT -> {

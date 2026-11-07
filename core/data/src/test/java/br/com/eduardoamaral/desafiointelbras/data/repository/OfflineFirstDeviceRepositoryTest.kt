@@ -7,6 +7,7 @@ import br.com.eduardoamaral.desafiointelbras.data.remote.dto.AlarmCentralDto
 import br.com.eduardoamaral.desafiointelbras.data.remote.dto.VideoDeviceDto
 import br.com.eduardoamaral.desafiointelbras.domain.model.AppError
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceDetails
+import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -349,6 +351,29 @@ class OfflineFirstDeviceRepositoryTest {
     }
 
     // ---- Criação e edição offline ----
+
+    @Test
+    fun `recusa encontrada sem ninguem ouvindo fica guardada ate a lista abrir`() = runTest {
+        // Como o worker com o app em segundo plano: ninguém coleta os avisos ainda.
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.create(DeviceInput.Video("Portão", "ABC123", "admin", "1234"))
+        api.videoError = null
+        api.videos += camera // mesmo serial: o envio recebe 409
+
+        repository.syncPendingOperations()
+
+        assertEquals(SyncEvent.CreateRejected("Portão", AppError.Conflict), repository.syncEvents.first())
+    }
+
+    @Test
+    fun `resposta ilegivel no envio mantem o item na fila`() = runTest {
+        api.videoError = FakeDeviceApi.NETWORK_ERROR
+        repository.create(DeviceInput.Video("Portão", "NOVO1", "admin", "1234"))
+        api.videoError = SerializationException("resposta fora do contrato")
+
+        assertEquals(PendingSyncResult.RETRY_LATER, repository.syncPendingOperations())
+        assertEquals(listOf("Portão"), repository.observeDevices("", DeviceFilter.ALL).first().map { it.name })
+    }
 
     private fun TestScope.collectEvents(): List<SyncEvent> {
         val events = mutableListOf<SyncEvent>()

@@ -17,17 +17,20 @@ enum class FailureKind { TRANSIENT, AUTH, ALREADY_DONE, REJECTED }
 
 /**
  * - TRANSIENT: rede, timeout, 5xx e 429. Tentar de novo; o usuário não perde nada.
+ *   Também Unknown (resposta que o app não conseguiu ler): o servidor pode ter aplicado a
+ *   mudança, então desfazer apagaria algo que existe lá. Na próxima tentativa ele responde
+ *   de forma conclusiva (ex.: 409 se o item já foi criado, e o refresh traz a cópia dele).
  * - AUTH: token inválido. Pausar a fila; descartar as mudanças do usuário seria errado.
  * - ALREADY_DONE: 404 numa remoção. O item já não existe no servidor: objetivo atingido.
  * - REJECTED: o servidor recusou de vez (400, 409...). Desfazer a mudança local.
  */
 fun AppError.failureKind(): FailureKind = when (this) {
-    AppError.Network, AppError.Timeout -> FailureKind.TRANSIENT
+    AppError.Network, AppError.Timeout, AppError.Unknown -> FailureKind.TRANSIENT
     is AppError.Server ->
         if (code >= FIRST_SERVER_ERROR || code == TOO_MANY_REQUESTS) FailureKind.TRANSIENT else FailureKind.REJECTED
     AppError.Unauthorized -> FailureKind.AUTH
     AppError.NotFound -> FailureKind.ALREADY_DONE
-    AppError.Conflict, is AppError.InvalidData, AppError.Unknown -> FailureKind.REJECTED
+    AppError.Conflict, is AppError.InvalidData -> FailureKind.REJECTED
 }
 
 /** Acontecimentos da sincronização em segundo plano que o usuário precisa saber. */

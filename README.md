@@ -31,16 +31,47 @@ Testes:
 
 ```bash
 # ViewModels, repositório, fila offline, worker, validação e regras de estado
-./gradlew testDebugUnitTest :core:domain:jvmTest :core:testing:test
+./gradlew testDebugUnitTest :core:domain:jvmTest :core:testing:test :tools:mock-api:test
 
 # Room com SQLite real (DAO, fila, migrações) e telas com Compose UI Test (precisa de emulador/dispositivo)
 ./gradlew connectedDebugAndroidTest
 
 # Tudo de uma vez, como antes de cada commit
-./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:testing:test connectedDebugAndroidTest
+./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:testing:test :tools:mock-api:test connectedDebugAndroidTest
 ```
 
-`:core:domain` é Kotlin Multiplatform: `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. `:core:testing` é Kotlin/JVM, então a tarefa dele é `test`. Os relatórios ficam em `<módulo>/build/reports/`.
+`:core:domain` é Kotlin Multiplatform: `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. `:core:testing` e `:tools:mock-api` são Kotlin/JVM, então a tarefa deles é `test`. Os relatórios ficam em `<módulo>/build/reports/`.
+
+### API falsa local
+
+O servidor do desafio saiu do ar depois do prazo. Para continuar desenvolvendo e testando, o projeto tem uma **API falsa** em `tools/mock-api`, um servidor Ktor que imita o contrato:
+
+- os dois recursos, com `GET` (envelope `{ count, data }`), `GET /{id}`, `POST`, `PATCH /{id}` e `DELETE /{id}`;
+- **403** sem token ou com token diferente do `API_TOKEN` do `local.properties`;
+- **400** com a lista de mensagens no formato do NestJS, **404** para id desconhecido e **409** para serial ou MAC repetido.
+
+Os dados ficam em memória: reiniciar o servidor volta aos 3 dispositivos iniciais. As regras de validação foram escritas à parte, sem usar o `DeviceValidator` do app, senão um erro de regra no app não apareceria.
+
+```bash
+./gradlew :tools:mock-api:run
+```
+
+No `local.properties`, aponte o app para ela e rode de novo:
+
+```properties
+# emulador Android (10.0.2.2 é o computador visto de dentro do emulador)
+API_BASE_URL=http://10.0.2.2:8080/
+```
+
+O HTTP sem TLS para `10.0.2.2` e `localhost` só é liberado no build de debug (`app/src/debug/res/xml/network_security_config.xml`).
+
+Ela também provoca o que o servidor real não deixava, para testar a fila offline e as mensagens de erro:
+
+```bash
+curl -X POST "http://localhost:8080/_mock/fail?status=500&count=3"  # próximas 3 requisições com 500
+curl -X POST "http://localhost:8080/_mock/delay?ms=20000"           # 20 s por requisição (timeout é 15 s)
+curl -X POST "http://localhost:8080/_mock/reset"                    # dados iniciais, sem falhas
+```
 
 Análise estática (também roda no CI):
 

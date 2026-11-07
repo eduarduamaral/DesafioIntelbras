@@ -16,3 +16,5 @@ local.properties
 # Saída de build de qualquer módulo (app, core/*, feature/*, build-logic)
 **/build/
 /build-logic/.kotlin
+# Dados da API falsa local (tools/mock-api)
+/tools/mock-api/data.json

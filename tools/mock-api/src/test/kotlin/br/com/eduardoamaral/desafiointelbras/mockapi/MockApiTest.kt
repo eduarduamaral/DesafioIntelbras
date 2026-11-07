@@ -15,6 +15,7 @@ import io.ktor.server.testing.testApplication
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /** O contrato que o app espera do servidor, conferido contra a API falsa. */
 class MockApiTest {
@@ -83,6 +84,21 @@ class MockApiTest {
 
         assertEquals(HttpStatusCode.ServiceUnavailable, client.get("/video-devices") { bearerAuth(TOKEN) }.status)
         assertEquals(HttpStatusCode.OK, client.get("/video-devices") { bearerAuth(TOKEN) }.status)
+    }
+
+    @Test
+    fun `dados salvos sobrevivem a reiniciar o servidor`() {
+        val file = File.createTempFile("mock-api", ".json").apply { delete() }
+        try {
+            val first = MockApiState(file)
+            first.alarms.create { id -> AlarmCentral(id, "Nova", "AABBCCDDEEFF", "1234") }
+
+            val restarted = MockApiState(file)
+
+            assertEquals(listOf("Central do escritório", "Nova"), restarted.alarms.all().map { it.name })
+        } finally {
+            file.delete()
+        }
     }
 
     private companion object {

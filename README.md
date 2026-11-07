@@ -50,7 +50,7 @@ O servidor do desafio saiu do ar depois do prazo. Para continuar desenvolvendo e
 - **403** sem token ou com token diferente do `API_TOKEN` do `local.properties`;
 - **400** com a lista de mensagens no formato do NestJS, **404** para id desconhecido e **409** para serial ou MAC repetido.
 
-Os dados ficam em memória: reiniciar o servidor volta aos 3 dispositivos iniciais. As regras de validação foram escritas à parte, sem usar o `DeviceValidator` do app, senão um erro de regra no app não apareceria.
+Os dados ficam salvos em `tools/mock-api/data.json` (fora do Git), então sobrevivem a reiniciar o servidor; `POST /_mock/reset` volta aos 3 dispositivos iniciais. As regras de validação foram escritas à parte, sem usar o `DeviceValidator` do app, senão um erro de regra no app não apareceria.
 
 ```bash
 ./gradlew :tools:mock-api:run

@@ -22,22 +22,48 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 
 /** Prefixo das rotas de controle (falhas, atraso, reset). Não pedem token. */
 const val CONTROL_PATH = "/_mock"
 
 /** Estado do servidor: os dois recursos e a simulação de falhas. */
-class MockApiState(
-    val videos: ResourceStore<VideoDevice> = ResourceStore(::seedVideos),
-    val alarms: ResourceStore<AlarmCentral> = ResourceStore(::seedAlarms),
-    val simulation: Simulation = Simulation(),
-) {
+class MockApiState(private val dataFile: File? = null) {
+    private val saved: Snapshot? = dataFile?.takeIf { it.exists() }?.let { file ->
+        // Um arquivo corrompido não impede o servidor de subir: começa com os dados iniciais.
+        runCatching { SnapshotJson.decodeFromString<Snapshot>(file.readText()) }.getOrNull()
+    }
+
+    val videos = ResourceStore(::seedVideos, saved?.videos, ::save)
+    val alarms = ResourceStore(::seedAlarms, saved?.alarms, ::save)
+    val simulation = Simulation()
+
     fun reset() {
         videos.reset()
         alarms.reset()
         simulation.reset()
     }
+
+    /**
+     * Grava os dois recursos depois de cada mudança. Sem isso, reiniciar a API falsa apagava
+     * o que o app tinha enviado, e o próximo refresh tirava esses itens do app (com razão:
+     * o servidor é a fonte da verdade da lista).
+     */
+    @Synchronized
+    private fun save() {
+        val file = dataFile ?: return
+        file.writeText(SnapshotJson.encodeToString(Snapshot(videos.all(), alarms.all())))
+    }
+}
+
+@Serializable
+private data class Snapshot(val videos: List<VideoDevice>, val alarms: List<AlarmCentral>)
+
+private val SnapshotJson = Json {
+    prettyPrint = true
+    ignoreUnknownKeys = true
 }
 
 /**

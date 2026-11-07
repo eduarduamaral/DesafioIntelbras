@@ -1,10 +1,17 @@
 # Só o que difere do padrão do detekt (buildUponDefaultConfig = true no build).
 # Para ver todas as regras e valores padrão: ./gradlew detektGenerateConfig
+#
+# Pastas de teste: o padrão do detekt relaxa algumas regras em test, androidTest,
+# commonTest, jvmTest..., mas ainda não conhece androidHostTest e androidDeviceTest, as
+# pastas do plugin KMP do AGP 9 (usadas pelo :core:data). A lista completa fica na âncora
+# &testSources e é repetida (*testSources) nas regras que o padrão relaxa nos testes.
 
 naming:
   FunctionNaming:
     # Funções @Composable usam PascalCase, convenção oficial do Compose.
     ignoreAnnotated: ['Composable']
+    # Testes usam nomes com espaço entre crases, que descrevem o comportamento.
+    excludes: &testSources ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/androidHostTest/**', '**/androidDeviceTest/**', '**/jsTest/**', '**/iosTest/**']
 
 complexity:
   LongParameterList:
@@ -20,17 +27,34 @@ complexity:
     ignoreAnnotated: ['Dao']
     allowedFunctionsPerClass: 15
     allowedFunctionsPerInterface: 15
+    excludes: *testSources
 
 style:
   MagicNumber:
     # Medidas de layout (16.dp, 0.5f) são valores de design, não números mágicos.
     ignoreAnnotated: ['Composable', 'Preview']
+    # Mesma lista dos testes, mais os scripts do Gradle (como no padrão).
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/androidHostTest/**', '**/androidDeviceTest/**', '**/jsTest/**', '**/iosTest/**', '**/*.kts']
   UnusedPrivateFunction:
     # @Preview privada é usada pelo Android Studio, não pelo código.
     allowedNames: '.*Preview'
   ReturnCount:
     # Retorno antecipado no começo da função (guard clause) deixa o código mais plano.
     excludeGuardClauses: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    excludes: *testSources
+
+performance:
+  ForEachOnRange:
+    excludes: *testSources
+  SpreadOperator:
+    excludes: *testSources
+
+potential-bugs:
+  UnsafeCallOnNullableType:
+    excludes: *testSources
 
 ktlint:
   # Estas regras juntam numa linha só toda assinatura que couber, inclusive as escritas

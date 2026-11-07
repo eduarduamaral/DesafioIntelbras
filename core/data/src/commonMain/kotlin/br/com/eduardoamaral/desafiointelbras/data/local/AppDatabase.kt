@@ -4,10 +4,11 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.AutoMigrationSpec
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 
 /**
- * Histórico de versões (esquemas exportados em app/schemas):
+ * Histórico de versões (esquemas exportados em core/data/schemas):
  * - 1: tabelas devices e favorites.
  * - 2: view device_with_favorite. Migração automática: o Room gera o CREATE VIEW,
  *      sem tocar nos dados.
@@ -34,10 +35,12 @@ abstract class AppDatabase : RoomDatabase() {
     /**
      * Sem isto, todas as linhas antigas ficariam com sort_order = 0, empatadas.
      * O rowid reflete a ordem de inserção (o @Upsert não troca o rowid de quem já existe).
+     * Usa SQLiteConnection (Room KMP), que vale no Android e no iOS; a versão antiga, com
+     * SupportSQLiteDatabase, só existe no Android.
      */
     class NumberExistingDevices : AutoMigrationSpec {
-        override fun onPostMigrate(db: SupportSQLiteDatabase) {
-            db.execSQL("UPDATE devices SET sort_order = rowid")
+        override fun onPostMigrate(connection: SQLiteConnection) {
+            connection.execSQL("UPDATE devices SET sort_order = rowid")
         }
     }
 

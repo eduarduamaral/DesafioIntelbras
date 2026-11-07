@@ -31,16 +31,16 @@ Testes:
 
 ```bash
 # ViewModels, repositório, fila offline, worker, validação e regras de estado
-./gradlew testDebugUnitTest :core:domain:jvmTest :core:testing:test :tools:mock-api:test
+./gradlew testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :core:testing:test :tools:mock-api:test
 
 # Room com SQLite real (DAO, fila, migrações) e telas com Compose UI Test (precisa de emulador/dispositivo)
-./gradlew connectedDebugAndroidTest
+./gradlew connectedDebugAndroidTest :core:data:connectedAndroidDeviceTest
 
 # Tudo de uma vez, como antes de cada commit
-./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:testing:test :tools:mock-api:test connectedDebugAndroidTest
+./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :core:testing:test :tools:mock-api:test connectedDebugAndroidTest :core:data:connectedAndroidDeviceTest
 ```
 
-`:core:domain` é Kotlin Multiplatform: `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. `:core:testing` e `:tools:mock-api` são Kotlin/JVM, então a tarefa deles é `test`. Os relatórios ficam em `<módulo>/build/reports/`.
+`:core:domain` e `:core:data` são Kotlin Multiplatform e têm nomes de tarefa próprios. No domínio, `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. Nos dados, `testAndroidHostTest` roda na JVM e `connectedAndroidDeviceTest` no aparelho. `:core:testing` e `:tools:mock-api` são Kotlin/JVM, então a tarefa deles é `test`. Os relatórios ficam em `<módulo>/build/reports/`.
 
 ### API falsa local
 

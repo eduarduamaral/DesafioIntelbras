@@ -31,16 +31,16 @@ Testes:
 
 ```bash
 # ViewModels, repositório, fila offline, worker, validação e regras de estado
-./gradlew testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :core:testing:test :tools:mock-api:test
+./gradlew testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :tools:mock-api:test
 
 # Room com SQLite real (DAO, fila, migrações) e telas com Compose UI Test (precisa de emulador/dispositivo)
 ./gradlew connectedDebugAndroidTest :core:data:connectedAndroidDeviceTest
 
 # Tudo de uma vez, como antes de cada commit
-./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :core:testing:test :tools:mock-api:test connectedDebugAndroidTest :core:data:connectedAndroidDeviceTest
+./gradlew detekt lintDebug testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :tools:mock-api:test connectedDebugAndroidTest :core:data:connectedAndroidDeviceTest
 ```
 
-`:core:domain` e `:core:data` são Kotlin Multiplatform e têm nomes de tarefa próprios. No domínio, `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. Nos dados, `testAndroidHostTest` roda na JVM e `connectedAndroidDeviceTest` no aparelho. `:core:testing` e `:tools:mock-api` são Kotlin/JVM, então a tarefa deles é `test`. Os relatórios ficam em `<módulo>/build/reports/`.
+`:core:domain` e `:core:data` são Kotlin Multiplatform e têm nomes de tarefa próprios. No domínio, `jvmTest` roda os testes no alvo usado pelo Android, e no Mac `:core:domain:allTests` roda também no simulador do iOS. Nos dados, os testes de `commonTest` (repositório, fila, Ktor, mappers) rodam na JVM com `testAndroidHostTest` e no simulador do iOS com `:core:data:allTests` (só no Mac); os de banco (DAO e migrações) rodam no aparelho Android com `connectedAndroidDeviceTest`. `:tools:mock-api` é Kotlin/JVM, então a tarefa dele é `test`. O `:core:testing` (fakes compartilhados) é KMP e não tem testes próprios. Os relatórios ficam em `<módulo>/build/reports/`.
 
 ### API falsa local
 
@@ -116,8 +116,8 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
              (modelos, validação, DeviceRepository, NetworkMonitor)
                   Kotlin Multiplatform (jvm + iOS)
 
-  :core:testing → fakes (FakeDeviceRepository, FakeNetworkMonitor...) e MainDispatcherRule,
-                  usados só nos testes das features e do :core:data
+  :core:testing → fakes (FakeDeviceRepository, FakeNetworkMonitor...), KMP como o domínio,
+                  e MainDispatcherRule (JUnit, só JVM); usado só nos testes das features e do :core:data
 ```
 
 Regras que a estrutura garante (um import que as viole não compila, porque o módulo não está nas dependências):
@@ -138,7 +138,7 @@ A configuração repetida dos módulos fica em **convention plugins** (`build-lo
 | `desafio.hilt` | Hilt + KSP |
 | `desafio.android.feature` | biblioteca + Compose + Hilt, `:core:ui`, `:core:domain`, ViewModel, Navigation, serialização das rotas e `:core:testing` nos testes |
 | `desafio.kmp.library` | Kotlin Multiplatform sem Android (jvm, iosArm64, iosSimulatorArm64), `kotlin.test` em `commonTest` e detekt lendo `src/<sourceSet>` |
-| `desafio.jvm.library` | Kotlin/JVM puro, para `:core:testing` |
+| `desafio.jvm.library` | Kotlin/JVM puro, para `:tools:mock-api` |
 | `desafio.detekt` | detekt com as regras do ktlint e o `config/detekt/detekt.yml` compartilhado |
 
 Os pacotes não mudaram com a modularização (só `R` e `BuildConfig` ganharam o namespace do módulo), por isso a tabela abaixo continua valendo:

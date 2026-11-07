@@ -1,11 +1,19 @@
-// Fakes e utilitários de teste que dependem só do domínio (ViewModels, features).
-// Os fakes da camada de dados (banco, API) ficam nos testes do próprio :core:data.
+// Fakes e utilitários de teste que dependem só do domínio, compartilhados pelos testes das
+// features (Android) e do :core:data (Android e iOS). Os fakes da camada de dados (banco,
+// API) ficam nos testes do próprio :core:data.
 plugins {
-    alias(libs.plugins.desafio.jvm.library)
+    alias(libs.plugins.desafio.kmp.library)
 }
 
-dependencies {
-    api(project(":core:domain"))
-    api(libs.junit)
-    api(libs.kotlinx.coroutines.test)
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            api(project(":core:domain"))
+            api(libs.kotlinx.coroutines.test)
+        }
+        // MainDispatcherRule é uma regra da JUnit 4: só existe para os testes na JVM.
+        jvmMain.dependencies {
+            api(libs.junit)
+        }
+    }
 }

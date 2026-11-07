@@ -24,11 +24,11 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OfflineFirstDeviceRepositoryTest {
@@ -41,7 +41,7 @@ class OfflineFirstDeviceRepositoryTest {
     private val camera = VideoDeviceDto("v1", "Câmera", "ABC123", "admin", "1234")
     private val central = AlarmCentralDto("a1", "Central", "1A2B3C4D5E6F", "1234")
 
-    @Before
+    @BeforeTest
     fun setUp() {
         api = FakeDeviceApi()
         local = FakeDeviceLocalDataSource()
@@ -294,7 +294,7 @@ class OfflineFirstDeviceRepositoryTest {
 
         repository.syncPendingOperations()
 
-        assertEquals(listOf(SyncEvent.DeleteRejected("Câmera")), events)
+        assertEquals(listOf<SyncEvent>(SyncEvent.DeleteRejected("Câmera")), events)
     }
 
     @Test

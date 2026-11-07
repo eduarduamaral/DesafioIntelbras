@@ -19,9 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * O cliente HTTP de verdade (createHttpClient + KtorDeviceApi) sobre um MockEngine:
@@ -46,7 +46,7 @@ class KtorDeviceApiTest {
         respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
 
     @Test
-    fun `listagem usa a URL base, o token e le o envelope count-data`() = runTest {
+    fun `listagem usa a URL base e o token e le o envelope count-data`() = runTest {
         // "novo" não existe no DTO: o app tem que ignorar campos que a API acrescentar.
         val central = """{"id":"a1","name":"Central","macAddress":"1A2B3C4D5E6F","password":"1234","novo":true}"""
         val api = api { json("""{"count":1,"data":[$central]}""") }
@@ -71,7 +71,7 @@ class KtorDeviceApiTest {
         assertEquals("${BASE_URL}video-devices/v1", request.url.toString())
         assertEquals("application/json", request.body.contentType?.withoutParameters()?.toString())
         val sent = request.body.toByteArray().decodeToString()
-        assertTrue(sent, sent.contains("\"serial\":\"ABC\""))
+        assertTrue(sent.contains("\"serial\":\"ABC\""), sent)
     }
 
     @Test

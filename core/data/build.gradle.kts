@@ -19,7 +19,7 @@ kotlin {
         compileSdk = 36
         minSdk = 29
 
-        // Testes na JVM, sem aparelho: src/androidHostTest.
+        // Roda os testes de src/commonTest na JVM, sem aparelho (testAndroidHostTest).
         withHostTest {}
         // Testes no aparelho, com SQLite real (DAO e migrações): src/androidDeviceTest.
         withDeviceTest {
@@ -63,9 +63,13 @@ kotlin {
             // No iOS não há SQLite do sistema exposto ao Room: o driver traz o próprio.
             implementation(libs.androidx.sqlite.bundled)
         }
-        getByName("androidHostTest").dependencies {
+        // Repositório, fila, Ktor e mappers testados com fakes, em todos os alvos:
+        // testAndroidHostTest (JVM) e iosSimulatorArm64Test (simulador do iOS).
+        commonTest.dependencies {
+            // Mesmo pacote (testutil): o applyFilter dos fakes do domínio é usado sem import.
             implementation(project(":core:testing"))
-            implementation(libs.junit)
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
         }
         getByName("androidDeviceTest").dependencies {

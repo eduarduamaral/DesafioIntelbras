@@ -32,9 +32,9 @@ jobs:
 
       # testDebugUnitTest cobre os módulos Android. :core:domain e :core:data são KMP, com
       # nomes de tarefa próprios (jvmTest e testAndroidHostTest); os alvos iOS só rodam no Mac.
-      # :core:testing e :tools:mock-api são Kotlin/JVM ("test").
+      # :tools:mock-api é Kotlin/JVM ("test").
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :core:testing:test :tools:mock-api:test
+        run: ./gradlew testDebugUnitTest :core:domain:jvmTest :core:data:testAndroidHostTest :tools:mock-api:test
         env:
           API_TOKEN: ${{ secrets.API_TOKEN }}
 

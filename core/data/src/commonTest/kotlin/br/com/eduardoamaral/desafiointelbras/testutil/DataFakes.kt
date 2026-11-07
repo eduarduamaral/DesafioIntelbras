@@ -196,7 +196,7 @@ class FakeDeviceApi : DeviceApi {
         videoError?.let { throw it }
         if (videos.none { it.id == id }) throw httpError(404)
         val updated = VideoDeviceDto(id, body.name, body.serial, body.username, body.password)
-        videos.replaceAll { if (it.id == id) updated else it }
+        videos[videos.indexOfFirst { it.id == id }] = updated
         return updated
     }
 
@@ -222,7 +222,7 @@ class FakeDeviceApi : DeviceApi {
         alarmError?.let { throw it }
         if (alarms.none { it.id == id }) throw httpError(404)
         val updated = AlarmCentralDto(id, body.name, body.macAddress, body.password)
-        alarms.replaceAll { if (it.id == id) updated else it }
+        alarms[alarms.indexOfFirst { it.id == id }] = updated
         return updated
     }
 

@@ -5,9 +5,9 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class SafeApiCallTest {
 

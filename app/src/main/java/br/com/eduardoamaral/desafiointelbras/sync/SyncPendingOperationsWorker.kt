@@ -1,4 +1,4 @@
-package br.com.eduardoamaral.desafiointelbras.data.sync
+package br.com.eduardoamaral.desafiointelbras.sync
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker

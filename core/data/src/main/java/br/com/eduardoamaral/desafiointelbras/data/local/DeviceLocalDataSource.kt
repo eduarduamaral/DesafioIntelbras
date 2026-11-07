@@ -7,7 +7,6 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceFilter
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
 /**
  * Fonte local. A interface existe para o repositório ser testado com um fake
@@ -28,7 +27,7 @@ interface DeviceLocalDataSource {
     suspend fun toggleFavorite(id: String)
 }
 
-class RoomDeviceLocalDataSource @Inject constructor(
+class RoomDeviceLocalDataSource(
     private val dao: DeviceDao,
 ) : DeviceLocalDataSource {
 

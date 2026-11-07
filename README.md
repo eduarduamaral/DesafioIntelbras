@@ -98,7 +98,7 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
 
 ```
                          :app
-          (Application, MainActivity, AppNavHost, grafo do Hilt)
+  (Application, MainActivity, AppNavHost, Hilt, worker do WorkManager)
             │                 │                    │
             ▼                 ▼                    │
   :feature:dashboard   :feature:device             │
@@ -107,8 +107,8 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
             └──────┬──────────┘                    │
                    ▼                               ▼
                :core:ui                       :core:data
-   (tema, componentes, UserMessageBus,  (Room, Ktor, fila offline,   
-    textos comuns, tradução de erros)    WorkManager, módulos Hilt)
+   (tema, componentes, UserMessageBus,  (Room, Ktor, fila offline,
+    textos comuns, tradução de erros)    DataContainer; sem Hilt)
                    │                               │
                    └──────────────┬────────────────┘
                                   ▼
@@ -123,6 +123,7 @@ UI (Compose)  ──eventos──▶  ViewModel  ──▶  DeviceRepository (do
 Regras que a estrutura garante (um import que as viole não compila, porque o módulo não está nas dependências):
 
 - **Uma feature não conhece `:core:data` nem outra feature.** As telas falam só com a interface `DeviceRepository` do domínio; quem entrega a implementação é o Hilt, montado no `:app`.
+- **`:core:data` não usa Hilt nem WorkManager.** Ele monta tudo num `DataContainer` (banco, API, fila e repositório) a partir das peças de cada plataforma. No Android, o `:app` cria o container com `createAndroidDataContainer` e o expõe ao Hilt (`di/DataModule`). O worker e o `WorkManagerSyncScheduler` ficam no `:app`, atrás da interface `SyncScheduler`. Assim o mesmo grafo serve ao iOS.
 - **A navegação entre features passa pelo `:app`.** Cada feature expõe suas rotas e o trecho do grafo (`dashboardScreen`, `deviceFormScreen`, `navigateToDeviceForm`...). A lista só avisa "editar o item X", e o `AppNavHost` traduz isso numa rota da feature de dispositivo.
 - **`:core:domain` não tem Android.** É um módulo Kotlin Multiplatform (alvos jvm, iosArm64 e iosSimulatorArm64): o mesmo código e os mesmos testes valem para Android e iOS.
 - **Cada módulo tem seus próprios textos.** Os comuns (cancelar, tentar de novo, erros de rede e de validação) ficam no `:core:ui` e são importados como `CoreUiR`.
@@ -148,9 +149,10 @@ Os pacotes não mudaram com a modularização (só `R` e `BuildConfig` ganharam 
 | `data/local` (`:core:data`) | Room: entidades, DAO, `DeviceLocalDataSource`. |
 | `data/remote` (`:core:data`) | `DeviceRemoteDataSource`: esconde os dois recursos da API, os DTOs e a tradução de erros (`safeApiCall`), devolvendo modelos de domínio. Implementada com Ktor: `DeviceApi` (os endpoints) e `createHttpClient` (URL base, token, JSON, timeout e status de erro como `HttpStatusException`). O engine vem de fora: OkHttp no Android e `MockEngine` nos testes. |
 | `data/repository` (`:core:data`) | `OfflineFirstDeviceRepository`: só orquestra as duas fontes (lê do Room, escreve via fonte remota e reflete no Room, com `Mutex`). Não conhece Ktor, DTOs nem Room. |
-| `data/sync` (`:core:data`) | Fila offline: `SyncScheduler` (WorkManager) e `SyncPendingOperationsWorker`. |
+| `data/sync` (`:core:data`) | `SyncScheduler`: a interface com que o repositório pede o envio da fila. |
+| `data` (`:core:data`) | `DataContainer`, que monta a camada de dados, e `createAndroidDataContainer`, com as peças do Android (Room, OkHttp, `ConnectivityManager`). |
 | `data/network` (`:core:data`) | `ConnectivityNetworkMonitor`: implementa o `NetworkMonitor` do domínio, estado da conexão como `Flow`. |
-| `di` (`:core:data`) | Módulos Hilt da camada de dados. |
+| `di` e `sync` (`:app`) | Hilt (`DataModule` expõe o `DataContainer`) e o envio da fila com WorkManager (`WorkManagerSyncScheduler`, `SyncPendingOperationsWorker`). |
 | `ui/theme`, `ui/components`, `ui/common` (`:core:ui`) | Tema, componentes reutilizáveis, `UserMessageBus` e tradução de `AppError` em texto. |
 | `ui/dashboard` (`:feature:dashboard`) | Lista, busca, filtros, menu de ações e aviso de sincronização. |
 | `ui/device` (`:feature:device`) | Formulário de cadastro/edição e tela de informações. |

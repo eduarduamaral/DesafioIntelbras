@@ -5,24 +5,18 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import br.com.eduardoamaral.desafiointelbras.domain.network.NetworkMonitor
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Observa a rede padrão do sistema. Considera online só a rede com internet VALIDADA:
  * um Wi-Fi conectado sem internet (ou o emulador com a rede quebrada) conta como offline,
  * que é o mesmo critério que o WorkManager usa para rodar o envio da fila.
  */
-@Singleton
-class ConnectivityNetworkMonitor @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-) : NetworkMonitor {
+class ConnectivityNetworkMonitor(private val context: Context) : NetworkMonitor {
 
     override val isOnline: Flow<Boolean> = callbackFlow {
         val manager = context.getSystemService(ConnectivityManager::class.java)

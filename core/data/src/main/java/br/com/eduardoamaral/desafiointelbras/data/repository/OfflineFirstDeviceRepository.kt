@@ -28,8 +28,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Orquestra as duas fontes: a UI lê sempre da [local] (fonte única de verdade) e as escritas
@@ -47,8 +45,7 @@ import javax.inject.Singleton
  * Criar e editar tentam a API primeiro: com rede, um 409 (serial ou MAC repetido) volta na
  * hora e marca o campo no formulário. Sem rede, gravam no banco e entram na mesma fila.
  */
-@Singleton
-class OfflineFirstDeviceRepository @Inject constructor(
+class OfflineFirstDeviceRepository(
     private val remote: DeviceRemoteDataSource,
     private val local: DeviceLocalDataSource,
     private val outbox: PendingOperationsLocalDataSource,

@@ -4,8 +4,10 @@ import br.com.eduardoamaral.desafiointelbras.data.mapper.toEntity
 import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import kotlinx.coroutines.flow.Flow
-import java.util.UUID
-import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Fila de operações pendentes (padrão Outbox), separada de [DeviceLocalDataSource]:
@@ -52,16 +54,25 @@ data class PendingOperation(
  */
 object TemporaryIds {
     private const val PREFIX = "local-"
-    fun new(): String = PREFIX + UUID.randomUUID()
+
+    // kotlin.uuid (e não java.util.UUID): o mesmo código roda no iOS. Mesmo formato de texto.
+    @OptIn(ExperimentalUuidApi::class)
+    fun new(): String = PREFIX + Uuid.random()
+
     fun isTemporary(id: String): Boolean = id.startsWith(PREFIX)
 }
 
-class RoomPendingOperationsLocalDataSource @Inject constructor(
+/**
+ * [now] dá o horário que ordena a fila (milissegundos desde 1970). Parâmetro para os
+ * testes poderem fixar o tempo; o padrão é o relógio do sistema, em qualquer plataforma.
+ */
+class RoomPendingOperationsLocalDataSource(
     private val dao: DeviceDao,
+    private val now: () -> Long = ::systemTimeMillis,
 ) : PendingOperationsLocalDataSource {
 
     override suspend fun enqueueDelete(id: String): Boolean =
-        dao.enqueueDelete(id, createdAt = System.currentTimeMillis())
+        dao.enqueueDelete(id, createdAt = now())
 
     override suspend fun pendingOperations(): List<PendingOperation> =
         dao.getPendingOperations().mapNotNull { entity ->
@@ -82,10 +93,10 @@ class RoomPendingOperationsLocalDataSource @Inject constructor(
     override suspend fun registerFailedAttempt(id: String) = dao.incrementAttempts(id)
 
     override suspend fun enqueueCreate(device: Device) =
-        dao.enqueueCreate(device.toEntity(), createdAt = System.currentTimeMillis())
+        dao.enqueueCreate(device.toEntity(), createdAt = now())
 
     override suspend fun enqueueUpdate(device: Device): Boolean =
-        dao.enqueueUpdate(device.toEntity(), createdAt = System.currentTimeMillis())
+        dao.enqueueUpdate(device.toEntity(), createdAt = now())
 
     override suspend fun confirmCreate(temporaryId: String, created: Device) =
         dao.confirmCreate(temporaryId, created.toEntity())
@@ -98,3 +109,7 @@ class RoomPendingOperationsLocalDataSource @Inject constructor(
     // Mesmo efeito de desfazer uma remoção: estado SYNCED e fila limpa.
     override suspend fun dropPendingOperation(id: String) = dao.rollbackDelete(id)
 }
+
+// kotlin.time.Clock (e não System.currentTimeMillis): existe também no iOS.
+@OptIn(ExperimentalTime::class)
+private fun systemTimeMillis(): Long = Clock.System.now().toEpochMilliseconds()

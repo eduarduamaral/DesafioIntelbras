@@ -6,7 +6,6 @@ import br.com.eduardoamaral.desafiointelbras.domain.model.Device
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceInput
 import br.com.eduardoamaral.desafiointelbras.domain.model.DeviceType
 import br.com.eduardoamaral.desafiointelbras.domain.model.Outcome
-import javax.inject.Inject
 
 /**
  * Fonte remota, simétrica à [br.com.eduardoamaral.desafiointelbras.data.local.DeviceLocalDataSource]:
@@ -26,7 +25,7 @@ interface DeviceRemoteDataSource {
     suspend fun delete(id: String, type: DeviceType): Outcome<Unit>
 }
 
-class ApiDeviceRemoteDataSource @Inject constructor(
+class ApiDeviceRemoteDataSource(
     private val api: DeviceApi,
 ) : DeviceRemoteDataSource {
 

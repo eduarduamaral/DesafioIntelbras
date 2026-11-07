@@ -1,4 +1,4 @@
-package br.com.eduardoamaral.desafiointelbras.data.sync
+package br.com.eduardoamaral.desafiointelbras.sync
 
 import androidx.work.ListenableWorker.Result
 import br.com.eduardoamaral.desafiointelbras.domain.model.PendingSyncResult

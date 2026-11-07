@@ -15,7 +15,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,12 +31,15 @@ class KtorDeviceApiTest {
 
     private val requests = mutableListOf<HttpRequestData>()
 
-    private fun api(handler: MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): DeviceApi {
+    private fun api(
+        timeoutMillis: Long = 15_000L,
+        handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,
+    ): DeviceApi {
         val engine = MockEngine { request ->
             requests += request
             handler(request)
         }
-        return KtorDeviceApi(createHttpClient(engine, ApiConfig(BASE_URL, TOKEN)))
+        return KtorDeviceApi(createHttpClient(engine, ApiConfig(BASE_URL, TOKEN), timeoutMillis = timeoutMillis))
     }
 
     private fun MockRequestHandleScope.json(body: String, status: HttpStatusCode = HttpStatusCode.OK) =
@@ -84,6 +90,19 @@ class KtorDeviceApiTest {
         val result = safeApiCall { api.getAlarmCentrals() }
 
         assertEquals(Outcome.Failure(AppError.InvalidData("macAddress must be hex")), result)
+    }
+
+    @Test
+    fun `servidor que nao responde vira Timeout e nao cancela quem chamou`() = runTest {
+        // Como o servidor do desafio fora do ar: aceita a requisição e nunca responde.
+        val api = api(timeoutMillis = 200) {
+            withContext(Dispatchers.Default) { delay(5_000) }
+            json("{}")
+        }
+
+        val result = safeApiCall { api.getVideoDevices() }
+
+        assertEquals(Outcome.Failure(AppError.Timeout), result)
     }
 
     @Test

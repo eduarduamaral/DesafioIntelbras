@@ -35,6 +35,7 @@ private const val TIMEOUT_MILLIS = 15_000L
  * - URL base e `Authorization: Bearer <token>` em toda requisição.
  * - JSON com kotlinx.serialization.
  * - Status fora de 2xx vira [HttpStatusException], com o corpo (a API explica o 400 nele).
+ * - [timeoutMillis] para conectar, para cada leitura e para a requisição inteira (menor nos testes).
  * - [httpLog], se informado, recebe requisições e respostas, com o token mascarado.
  */
 fun createHttpClient(
@@ -42,13 +43,14 @@ fun createHttpClient(
     config: ApiConfig,
     json: Json = ApiJson,
     httpLog: ((String) -> Unit)? = null,
+    timeoutMillis: Long = TIMEOUT_MILLIS,
 ): HttpClient = HttpClient(engine) {
     expectSuccess = false
     install(ContentNegotiation) { json(json) }
     install(HttpTimeout) {
-        connectTimeoutMillis = TIMEOUT_MILLIS
-        requestTimeoutMillis = TIMEOUT_MILLIS
-        socketTimeoutMillis = TIMEOUT_MILLIS
+        connectTimeoutMillis = timeoutMillis
+        requestTimeoutMillis = timeoutMillis
+        socketTimeoutMillis = timeoutMillis
     }
     defaultRequest {
         url(config.baseUrl)

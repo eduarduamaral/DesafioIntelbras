@@ -7,6 +7,8 @@ import io.ktor.client.network.sockets.SocketTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.serialization.ContentConvertException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.io.IOException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -27,7 +29,12 @@ suspend fun <T> safeApiCall(block: suspend () -> T): Outcome<T> =
     try {
         Outcome.Success(block())
     } catch (e: CancellationException) {
-        throw e
+        // Se quem chamou foi cancelado (o usuário saiu da tela), ensureActive relança e o
+        // cancelamento estruturado segue. Se a coroutine continua ativa, o cancelamento veio
+        // de dentro do Ktor: o HttpTimeout encerra a requisição com um CancellationException
+        // cuja causa é o timeout. Repassar esse faria a falha sumir sem aviso.
+        currentCoroutineContext().ensureActive()
+        Outcome.Failure(if (e.isTimeout()) AppError.Timeout else AppError.Network)
     } catch (e: HttpStatusException) {
         Outcome.Failure(httpCodeToError(e.code, e.body))
     } catch (e: HttpRequestTimeoutException) {
@@ -44,6 +51,10 @@ suspend fun <T> safeApiCall(block: suspend () -> T): Outcome<T> =
     } catch (e: SerializationException) {
         Outcome.Failure(AppError.Unknown)
     }
+
+private fun Throwable.isTimeout(): Boolean = generateSequence(this) { it.cause }.any {
+    it is HttpRequestTimeoutException || it is ConnectTimeoutException || it is SocketTimeoutException
+}
 
 internal fun httpCodeToError(code: Int, errorBody: String? = null): AppError = when (code) {
     HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN -> AppError.Unauthorized

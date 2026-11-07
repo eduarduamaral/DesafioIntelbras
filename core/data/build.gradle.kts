@@ -1,6 +1,7 @@
 // Implementação do domínio em Kotlin Multiplatform: Room, Ktor e a fila de pendências,
-// montados pelo DataContainer. Código comum em src/commonMain; o que é do Android
-// (Room com Context, OkHttp, ConnectivityManager) em src/androidMain.
+// montados pelo DataContainer. Código comum em src/commonMain; o que é de cada plataforma
+// em src/androidMain (Room com Context, OkHttp, ConnectivityManager) e src/iosMain
+// (Room com SQLite embutido, Darwin, NWPathMonitor).
 // Sem Hilt nem WorkManager: esses são do :app. As features não dependem deste módulo.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -31,6 +32,16 @@ kotlin {
         }
     }
 
+    // Aparelho e simulador em Mac Apple Silicon. Os alvos iOS só compilam no Mac.
+    iosArm64()
+    iosSimulatorArm64()
+
+    compilerOptions {
+        // O Room usa um "expect object" (AppDatabaseConstructor) para criar o banco no iOS;
+        // o Kotlin ainda chama esse recurso de Beta e avisaria a cada compilação.
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     sourceSets {
         commonMain.dependencies {
             api(project(":core:domain"))
@@ -46,6 +57,11 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.ktor.client.okhttp)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+            // No iOS não há SQLite do sistema exposto ao Room: o driver traz o próprio.
+            implementation(libs.androidx.sqlite.bundled)
         }
         getByName("androidHostTest").dependencies {
             implementation(project(":core:testing"))
@@ -64,6 +80,8 @@ kotlin {
 dependencies {
     // O Room gera a implementação do banco e do DAO para cada alvo.
     add("kspAndroid", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
 }
 
 room {

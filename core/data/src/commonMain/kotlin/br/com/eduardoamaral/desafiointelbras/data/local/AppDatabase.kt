@@ -1,8 +1,10 @@
 package br.com.eduardoamaral.desafiointelbras.data.local
 
 import androidx.room.AutoMigration
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
@@ -29,6 +31,7 @@ import androidx.sqlite.execSQL
         AutoMigration(from = 3, to = 4, spec = AppDatabase.NumberExistingDevices::class),
     ],
 )
+@ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun deviceDao(): DeviceDao
 
@@ -47,4 +50,13 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         const val NAME = "desafio-intelbras.db"
     }
+}
+
+/**
+ * Como criar o banco em plataformas sem reflexão (iOS). O Room gera o `actual` de cada alvo;
+ * por isso não há `actual` escrito à mão, e o aviso de "expect sem actual" é esperado.
+ */
+@Suppress("KotlinNoActualForExpect")
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
 }

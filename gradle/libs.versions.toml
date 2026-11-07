@@ -14,6 +14,8 @@ work = "2.10.3"
 room = "2.8.3"
 # Cliente HTTP multiplataforma (OkHttp no Android, Darwin no iOS).
 ktor = "3.3.1"
+# Mesma versão que o Room 2.8.3 usa (driver SQLite embutido, para o iOS)
+sqlite = "2.6.1"
 slf4j = "2.0.17"
 kotlinxSerialization = "1.9.0"
 coroutines = "1.10.2"
@@ -66,6 +68,8 @@ ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-conte
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { group = "io.ktor", name = "ktor-client-darwin", version.ref = "ktor" }
+androidx-sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqlite" }
 ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 # Só a API falsa local (tools/mock-api)
 ktor-server-core = { group = "io.ktor", name = "ktor-server-core", version.ref = "ktor" }
